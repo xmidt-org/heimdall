@@ -1,0 +1,30 @@
+version: '3.4'
+
+services:
+  status:
+    image: status:local
+    container_name: status
+    restart: on-failure
+    volumes:
+      - ./docFiles/heimdall.yaml:/heimdall.yaml
+      - /Users/jmurdo202/Documents/Work/Sunnyvale/codex/support/prod_keys/ca.crt:/ca.crt
+      - /Users/jmurdo202/Documents/Work/Sunnyvale/codex/support/prod_keys/client.svalinn.key:/client.svalinn.key
+      - /Users/jmurdo202/Documents/Work/Sunnyvale/codex/support/prod_keys/client.svalinn.crt:/client.svalinn.crt
+    ports:
+      - 7203:7203
+    networks:
+      - back-tier
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    networks:
+      - back-tier
+    ports:
+      - 9090:9090
+    volumes:
+      - ./docFiles/prometheus.yml:/prometheus-data/prometheus.yml
+    command:  --config.file=/prometheus-data/prometheus.yml
+
+networks:
+  back-tier:

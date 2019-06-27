@@ -1,0 +1,55 @@
+---
+
+pprof:
+  address: ":7202"
+metric:
+  address: ":7203"
+  idleTimeout: "15s"
+  readTimeout: "5s"
+  metricsOptions:
+    namespace: "codex"
+    subsystem: "status"
+
+log:
+  file: "stdout"
+  level: "DEBUG"
+  json: true
+
+channelSize: 10000
+maxPoolSize: 1000000
+
+tick: 1s
+rate: 5
+
+
+gungnirAddress: "https://codex.example.net"
+gungnirSAT:
+  requestHeaders:
+    X-Client-Id: ""
+    X-Client-Secret: ""
+  authURL: ""
+  timeout: "1m"
+  buffer: "1m"
+xmidtAddress: "https://api.webpa.example.net"
+xmidtSAT:
+  requestHeaders:
+    X-Client-Id: ""
+    X-Client-Secret: ""
+  authURL: ""
+  timeout: "1m"
+  buffer: "1m"
+
+db:
+  server: "db.example.net"
+  database: "devices"
+  table: "events"
+  username: "svalinn"
+  numRetries: 4
+  waitTimeMult: 5
+  connectTimeout: "1m"
+  opTimeout: "3m"
+  pingInterval: 1m
+  sslRootCert: "ca.crt"
+  sslKey: "client.svalinn.key"
+  sslCert: "client.svalinn.crt"
+  maxOpenConns: 500

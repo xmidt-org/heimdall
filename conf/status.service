@@ -1,0 +1,18 @@
+# -*- mode: conf -*-
+
+[Unit]
+Description=The receiver of data from XMiDT Caduceus.
+Documentation=https://github.com/Comcast/codex-status
+After=network.target
+
+[Service]
+EnvironmentFile=-/etc/default/status
+User=status
+ExecStart=/usr/bin/heimdall \
+          $SVALINN_OPTS
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+LimitNOFILE=infinity
+
+[Install]
+WantedBy=multi-user.target

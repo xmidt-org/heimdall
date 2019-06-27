@@ -1,0 +1,30 @@
+language: go
+
+go:
+  - 1.12.x
+
+os:
+  - linux
+  - osx
+
+services:
+  - docker
+
+matrix:
+  allow_failures:
+    - go: tip
+  fast_finish: true
+
+branches:
+    only:
+    - master
+
+script:
+  - make style codecov
+
+jobs:
+  include:
+    - stage: integration
+      name: "Integration Tests"
+      script:
+        - make it
