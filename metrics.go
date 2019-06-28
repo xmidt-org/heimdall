@@ -16,7 +16,7 @@ const (
 const (
 	// StateLabel is for labeling metrics; it provides the device status
 	// according to xmidt.
-	StateLabel   = "connected state"
+	StateLabel   = "connected_state"
 	OnlineState  = "online"
 	OfflineState = "offline"
 )
