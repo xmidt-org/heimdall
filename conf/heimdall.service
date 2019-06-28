@@ -2,14 +2,14 @@
 
 [Unit]
 Description=The receiver of data from XMiDT Caduceus.
-Documentation=https://github.com/Comcast/codex-status
+Documentation=https://github.com/Comcast/codex-heimdall
 After=network.target
 
 [Service]
-EnvironmentFile=-/etc/default/status
-User=status
+EnvironmentFile=-/etc/default/heimdall
+User=heimdall
 ExecStart=/usr/bin/heimdall \
-          $SVALINN_OPTS
+          $HEIMDALL_OPTS
 ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 LimitNOFILE=infinity
