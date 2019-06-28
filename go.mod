@@ -1,4 +1,4 @@
-module github.com/Comcast/codex-loadtest
+module github.com/Comcast/codex-heimdall
 
 go 1.12
 
