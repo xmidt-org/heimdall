@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/xmetrics"
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/provider"
@@ -33,13 +32,13 @@ func Metrics() []xmetrics.Metric {
 			Name:       SuccessCounter,
 			Help:       "The total number of success",
 			Type:       "counter",
-			LabelNames: []string{db.TypeLabel},
+			LabelNames: []string{StateLabel},
 		},
 		{
 			Name:       FailureCounter,
 			Help:       "The total number of failure",
 			Type:       "counter",
-			LabelNames: []string{db.TypeLabel},
+			LabelNames: []string{StateLabel},
 		},
 		{
 			Name: DeviceSetSize,
