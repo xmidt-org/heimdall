@@ -30,7 +30,7 @@ import (
 const (
 	applicationName, apiBase = "heimdall", "/api/v1"
 	DEFAULT_KEY_ID           = "current"
-	applicationVersion       = "0.0.1"
+	applicationVersion       = "0.1.0"
 )
 
 type deviceGetter interface {
