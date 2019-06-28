@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [v0.1.1]
+- setting up pipeline
+
+
+
 ## [v0.1.0]
 - Initial Code added.
 - Added metric labels.
