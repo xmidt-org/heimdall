@@ -8,8 +8,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Comcast/codex/db/postgresql"
+
 	"github.com/Comcast/codex-heimdall/shuffle"
-	"github.com/Comcast/codex/db"
 	"github.com/Comcast/comcast-bascule/bascule/acquire"
 	"github.com/Comcast/webpa-common/concurrent"
 	"github.com/Comcast/webpa-common/logging"
@@ -32,15 +33,19 @@ const (
 	applicationVersion       = "0.0.1"
 )
 
+type deviceGetter interface {
+	GetDeviceList(string, int) ([]string, error)
+}
+
 type StatusConfig struct {
-	Db             db.Config
-	GungnirAddress string
-	GungnirSAT     acquire.JWTAcquirerOptions
-	XmidtAddress   string
-	XmidtSAT       acquire.JWTAcquirerOptions
-	ChannelSize    uint64
-	MaxPoolSize    int
-	Sender         SenderConfig
+	Db           postgresql.Config
+	CodexAddress string
+	CodexSAT     acquire.JWTAcquirerOptions
+	XmidtAddress string
+	XmidtSAT     acquire.JWTAcquirerOptions
+	ChannelSize  uint64
+	MaxPoolSize  int
+	Sender       SenderConfig
 
 	// Rate is the number of devices to check
 	Rate int
@@ -63,7 +68,7 @@ func start(arguments []string) int {
 
 	var (
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
-		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, db.Metrics, Metrics)
+		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, postgresql.Metrics, Metrics)
 	)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to initialize viper: %s\n", err.Error())
@@ -86,7 +91,7 @@ func start(arguments []string) int {
 	config := new(StatusConfig)
 	v.Unmarshal(config)
 
-	dbConn, err := db.CreateDbConnection(config.Db, metricsRegistry, nil)
+	dbConn, err := postgresql.CreateDbConnection(config.Db, metricsRegistry, nil)
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to initialize database connection",
 			logging.ErrorKey(), err.Error())
@@ -106,12 +111,12 @@ func start(arguments []string) int {
 	fmt.Println(config.MaxPoolSize)
 
 	confidence := Confidence{
-		gungnirAddress: config.GungnirAddress,
-		gungnirAuth:    acquire.NewJWTAcquirer(config.GungnirSAT),
-		xmidtAddress:   config.XmidtAddress,
-		xmidtAuth:      acquire.NewJWTAcquirer(config.XmidtSAT),
-		logger:         logger,
-		measures:       NewMeasures(metricsRegistry),
+		codexAddress: config.CodexAddress,
+		codexAuth:    acquire.NewJWTAcquirer(config.CodexSAT),
+		xmidtAddress: config.XmidtAddress,
+		xmidtAuth:    acquire.NewJWTAcquirer(config.XmidtSAT),
+		logger:       logger,
+		measures:     NewMeasures(metricsRegistry),
 		client: (&http.Client{
 			Transport: tr,
 			Timeout:   config.Sender.ClientTimeout,
@@ -177,7 +182,7 @@ func main() {
 	os.Exit(start(os.Args))
 }
 
-func populate(conn *db.Connection, input chan interface{}, stop chan struct{}, wg sync.WaitGroup, measures *Measures, maxPoolSize int) {
+func populate(conn deviceGetter, input chan interface{}, stop chan struct{}, wg sync.WaitGroup, measures *Measures, maxPoolSize int) {
 	defer wg.Done()
 	lastID := "mac:"
 	for {

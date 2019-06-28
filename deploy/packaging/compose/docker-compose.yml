@@ -7,9 +7,9 @@ services:
     restart: on-failure
     volumes:
       - ./docFiles/heimdall.yaml:/heimdall.yaml
-      - /Users/jmurdo202/Documents/Work/Sunnyvale/codex/support/prod_keys/ca.crt:/ca.crt
-      - /Users/jmurdo202/Documents/Work/Sunnyvale/codex/support/prod_keys/client.svalinn.key:/client.svalinn.key
-      - /Users/jmurdo202/Documents/Work/Sunnyvale/codex/support/prod_keys/client.svalinn.crt:/client.svalinn.crt
+      - ./ca.crt:/ca.crt
+      - ./client.svalinn.key:/client.svalinn.key
+      - ./client.svalinn.crt:/client.svalinn.crt
     ports:
       - 7203:7203
     networks:

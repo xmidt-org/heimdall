@@ -2,14 +2,15 @@ package main
 
 import (
 	"encoding/json"
-	"github.com/Comcast/webpa-common/logging"
-	"github.com/Comcast/webpa-common/xhttp"
-	"github.com/go-kit/kit/log"
 	"io/ioutil"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/Comcast/webpa-common/logging"
+	"github.com/Comcast/webpa-common/xhttp"
+	"github.com/go-kit/kit/log"
 
 	"github.com/Comcast/comcast-bascule/bascule/acquire"
 )
@@ -35,13 +36,13 @@ type Event []struct {
 type Confidence struct {
 	logger log.Logger
 
-	gungnirAddress string
-	gungnirAuth    acquire.JWTAcquirer
-	xmidtAddress   string
-	xmidtAuth      acquire.JWTAcquirer
-	wg             sync.WaitGroup
-	measures       *Measures
-	client         func(req *http.Request) (*http.Response, error)
+	codexAddress string
+	codexAuth    acquire.JWTAcquirer
+	xmidtAddress string
+	xmidtAuth    acquire.JWTAcquirer
+	wg           sync.WaitGroup
+	measures     *Measures
+	client       func(req *http.Request) (*http.Response, error)
 }
 
 func (confidence *Confidence) handleConfidence(quit chan struct{}, interval time.Duration, getDevice func() (interface{}, error)) {
@@ -70,37 +71,42 @@ func (confidence *Confidence) handleConfidence(quit chan struct{}, interval time
 func (confidence *Confidence) handleDevice(device string) {
 	wg := sync.WaitGroup{}
 	wg.Add(2)
-	gungnir, xmidt := false, false
+	state := OfflineState
+	codex, xmidt := false, false
 	go func() {
-		gungnir = confidence.gungnirOnline(device)
+		codex = confidence.codexOnline(device)
 		wg.Done()
 	}()
 
 	go func() {
 		xmidt = confidence.xmidtOnline(device)
+		if xmidt {
+			state = OnlineState
+		}
 		wg.Done()
 	}()
 	wg.Wait()
 
 	confidence.measures.Completed.Add(1)
-	if gungnir == xmidt {
-		confidence.measures.Success.Add(1)
+	if codex == xmidt {
+		confidence.measures.Success.With(StateLabel, state).Add(1)
 		logging.Debug(confidence.logger).Log(logging.MessageKey(), "YAY")
 	} else {
-		logging.Info(confidence.logger).Log(logging.MessageKey(), "XMiDT and Gungnir don't match", "xmidt-online", xmidt, "gungnir-online", gungnir, "device", device)
+		confidence.measures.Failure.With(StateLabel, state).Add(1)
+		logging.Info(confidence.logger).Log(logging.MessageKey(), "XMiDT and Codex don't match", "xmidt-online", xmidt, "codex-online", codex, "device", device)
 	}
 }
 
-func (confidence *Confidence) gungnirOnline(device string) bool {
-	request, err := http.NewRequest("GET", confidence.gungnirAddress+"/api/v1/device/"+device+"/status", nil)
+func (confidence *Confidence) codexOnline(device string) bool {
+	request, err := http.NewRequest("GET", confidence.codexAddress+"/api/v1/device/"+device+"/status", nil)
 	if err != nil {
 		logging.Error(confidence.logger).Log(logging.ErrorKey(), err, logging.MessageKey(), "failed to create request")
 		return false
 	}
 
-	auth, err := confidence.gungnirAuth.Acquire()
+	auth, err := confidence.codexAuth.Acquire()
 	if err != nil {
-		logging.Error(confidence.logger).Log(logging.ErrorKey(), err, logging.MessageKey(), "failed to get gungnir auth")
+		logging.Error(confidence.logger).Log(logging.ErrorKey(), err, logging.MessageKey(), "failed to get codex auth")
 		return false
 	}
 	request.Header.Add("Authorization", auth)
@@ -134,7 +140,7 @@ func (confidence *Confidence) xmidtOnline(device string) bool {
 	}
 	auth, err := confidence.xmidtAuth.Acquire()
 	if err != nil {
-		logging.Error(confidence.logger).Log(logging.ErrorKey(), err, logging.MessageKey(), "failed to get gungnir auth")
+		logging.Error(confidence.logger).Log(logging.ErrorKey(), err, logging.MessageKey(), "failed to get codex auth")
 		return false
 	}
 	request.Header.Add("Authorization", auth)
