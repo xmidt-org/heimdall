@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/Comcast/codex/db"
 	"github.com/Comcast/webpa-common/xmetrics"
 	"github.com/go-kit/kit/metrics"
 	"github.com/go-kit/kit/metrics/provider"
@@ -9,20 +10,36 @@ import (
 const (
 	CompletedCounter = "completed_count"
 	SuccessCounter   = "success_count"
+	FailureCounter   = "failure_count"
 	DeviceSetSize    = "device_set_size"
+)
+
+const (
+	// StateLabel is for labeling metrics; it provides the device status
+	// according to xmidt.
+	StateLabel   = "connected state"
+	OnlineState  = "online"
+	OfflineState = "offline"
 )
 
 func Metrics() []xmetrics.Metric {
 	return []xmetrics.Metric{
 		{
 			Name: CompletedCounter,
-			Help: "The total number of completed request to both xmidt and gungnir",
+			Help: "The total number of completed request to both xmidt and codex",
 			Type: "counter",
 		},
 		{
-			Name: SuccessCounter,
-			Help: "The total number of success",
-			Type: "counter",
+			Name:       SuccessCounter,
+			Help:       "The total number of success",
+			Type:       "counter",
+			LabelNames: []string{db.TypeLabel},
+		},
+		{
+			Name:       FailureCounter,
+			Help:       "The total number of failure",
+			Type:       "counter",
+			LabelNames: []string{db.TypeLabel},
 		},
 		{
 			Name: DeviceSetSize,
@@ -35,6 +52,7 @@ func Metrics() []xmetrics.Metric {
 type Measures struct {
 	Completed  metrics.Counter
 	Success    metrics.Counter
+	Failure    metrics.Counter
 	DeviceSize metrics.Gauge
 }
 
@@ -43,6 +61,7 @@ func NewMeasures(p provider.Provider) *Measures {
 	return &Measures{
 		Completed:  p.NewCounter(CompletedCounter),
 		Success:    p.NewCounter(SuccessCounter),
+		Failure:    p.NewCounter(FailureCounter),
 		DeviceSize: p.NewGauge(DeviceSetSize),
 	}
 }

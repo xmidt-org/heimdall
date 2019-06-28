@@ -3,6 +3,8 @@ cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMT
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
 github.com/BurntSushi/toml v0.3.1 h1:WXkYYl6Yr3qBf1K79EBnL4mak0OimBfB0XUf9Vl28OQ=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
+github.com/Comcast/codex v0.8.0 h1:pEJFZE6TvUq5UtUQOWQLCUjkLZ00IM7OGyFh3qVHPVY=
+github.com/Comcast/codex v0.8.0/go.mod h1:0EfKNJTGyayQae7ciafhglQtpGiYD87GaU8nBuLPR1A=
 github.com/Comcast/comcast-bascule v0.2.6-0.20190531231707-a2af5deaa8f6 h1:VUOvTR8hOjROg+YBOF9F++El2gJTHatXqlaIvKFfKBw=
 github.com/Comcast/comcast-bascule v0.2.6-0.20190531231707-a2af5deaa8f6/go.mod h1:auqlZLeJK2t2b5PRrPN3tWuJwEhvNf0Oht7tVmxvQfY=
 github.com/Comcast/webpa-common v0.0.0-20190312224005-400bb4f8fc50/go.mod h1:XSu1nN06grod4RD/3WRYdeMMKDXBpeosZgIoNcmYsus=
@@ -209,8 +211,6 @@ github.com/justinas/alice v0.0.0-20171023064455-03f45bd4b7da/go.mod h1:oLH0CmIax
 github.com/jwilder/encoding v0.0.0-20170811194829-b4e1701a28ef/go.mod h1:Ct9fl0F6iIOGgxJ5npU/IUOhOhqlVrGjyIZc8/MagT0=
 github.com/k0kubun/colorstring v0.0.0-20150214042306-9440f1994b88/go.mod h1:3w7q1U84EfirKl04SVQ/s7nPm1ZPhiXd34z40TNz36k=
 github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0/go.mod h1:1NbS8ALrpOvjt0rHPNLyCIeMtbizbir8U//inJ+zuB8=
-github.com/kcajmagic/codex v0.1.1-0.20190520223310-f4c06c9afefd h1:oLudkuoKLNms9J8TyygUtJ5Tfd3nRnbqrzStFnyrnYU=
-github.com/kcajmagic/codex v0.1.1-0.20190520223310-f4c06c9afefd/go.mod h1:0EfKNJTGyayQae7ciafhglQtpGiYD87GaU8nBuLPR1A=
 github.com/kevinburke/go-bindata v3.11.0+incompatible/go.mod h1:/pEEZ72flUW2p0yi30bslSp9YqD9pysLxunQDdb2CPM=
 github.com/kevinburke/ssh_config v0.0.0-20180830205328-81db2a75821e/go.mod h1:CT57kijsi8u/K/BOFA39wgDQJ9CxiF4nAY/ojJ6r6mM=
 github.com/keybase/go-crypto v0.0.0-20181031135447-f919bfda4fc1/go.mod h1:ghbZscTyKdM07+Fw3KSi0hcJm+AlEUWj8QLlPtijN/M=
