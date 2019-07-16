@@ -27,8 +27,8 @@ function deploy {
 
 heimdall-docker
 echo "Heimdall V:$HEIMDALL_VERSION"
-deploy
-go get -d github.com/xmidt-org/codex-deploy/tests/...
-printf "Starting Tests \n\n\n"
-go run github.com/xmidt-org/codex-deploy/tests/runners/travis -feature=codex-deploy/tests/features/heimdall/travis
-check $?
+# deploy
+# go get -d github.com/xmidt-org/codex-deploy/tests/...
+# printf "Starting Tests \n\n\n"
+# go run github.com/xmidt-org/codex-deploy/tests/runners/travis -feature=codex-deploy/tests/features/heimdall/travis
+# check $?
