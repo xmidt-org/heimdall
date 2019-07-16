@@ -1,7 +1,7 @@
 FROM golang:alpine as builder
 MAINTAINER Jack Murdock <jack_murdock@comcast.com>
 
-WORKDIR /go/src/github.com/comcast/codex-heimdall
+WORKDIR /go/src/github.com/xmidt-org/heimdall
 
 RUN apk update && apk upgrade && \
     apk add --no-cache bash git openssh
@@ -18,6 +18,6 @@ VOLUME /etc/heimdall
 
 EXPOSE 8080
 
-COPY --from=builder /go/src/github.com/comcast/codex-heimdall/heimdall_linux_amd64 /
+COPY --from=builder /go/src/github.com/xmidt-org/heimdall/heimdall_linux_amd64 /
 COPY heimdall.yaml /
 ENTRYPOINT ["/heimdall_linux_amd64"]

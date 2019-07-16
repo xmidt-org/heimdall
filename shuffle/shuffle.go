@@ -2,9 +2,10 @@ package shuffle
 
 import (
 	"errors"
-	"github.com/Comcast/webpa-common/semaphore"
-	mapset "github.com/deckarep/golang-set"
 	"sync/atomic"
+
+	mapset "github.com/deckarep/golang-set"
+	"github.com/xmidt-org/webpa-common/semaphore"
 )
 
 type stream struct {

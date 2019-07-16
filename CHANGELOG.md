@@ -26,5 +26,5 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added metric labels.
 - Bumped codex for `db` package updates.
 
-[Unreleased]: https://github.com/Comcast/codex-heimdall/compare/0.1.0...HEAD
-[v0.1.0]: https://github.com/Comcast/codex/compare/0.0.0...v0.1.0
+[Unreleased]: https://github.com/xmidt-org/heimdall/compare/0.1.0...HEAD
+[v0.1.0]: https://github.com/xmidt-org/heimdall/compare/0.0.0...v0.1.0

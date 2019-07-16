@@ -87,4 +87,4 @@ it:
 
 .PHONY: clean
 clean:
-	rm -rf ./codex-heimdall ./OPATH ./coverage.txt ./vendor
+	rm -rf ./heimdall ./OPATH ./coverage.txt ./vendor

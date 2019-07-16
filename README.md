@@ -1,13 +1,13 @@
 # heimdall
 (pronounced “hem-dahl”)
 
-[![Build Status](https://travis-ci.com/Comcast/codex-heimdall.svg?branch=master)](https://travis-ci.com/Comcast/codex-heimdall)
-[![codecov.io](http://codecov.io/github/Comcast/codex-heimdall/coverage.svg?branch=master)](http://codecov.io/github/Comcast/codex-heimdall?branch=master)
-[![Code Climate](https://codeclimate.com/github/Comcast/codex-heimdall/badges/gpa.svg)](https://codeclimate.com/github/Comcast/codex-heimdall)
-[![Issue Count](https://codeclimate.com/github/Comcast/codex-heimdall/badges/issue_count.svg)](https://codeclimate.com/github/Comcast/codex-heimdall)
-[![Go Report Card](https://goreportcard.com/badge/github.com/Comcast/codex-heimdall)](https://goreportcard.com/report/github.com/Comcast/codex-heimdall)
-[![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/Comcast/codex-heimdall/blob/master/LICENSE)
-[![GitHub release](https://img.shields.io/github/release/Comcast/codex-heimdall.svg)](CHANGELOG.md)
+[![Build Status](https://travis-ci.com/xmidt-org/heimdall.svg?branch=master)](https://travis-ci.com/xmidt-org/heimdall)
+[![codecov.io](http://codecov.io/github/xmidt-org/heimdall/coverage.svg?branch=master)](http://codecov.io/github/xmidt-org/heimdall?branch=master)
+[![Code Climate](https://codeclimate.com/github/xmidt-org/heimdall/badges/gpa.svg)](https://codeclimate.com/github/xmidt-org/heimdall)
+[![Issue Count](https://codeclimate.com/github/xmidt-org/heimdall/badges/issue_count.svg)](https://codeclimate.com/github/xmidt-org/heimdall)
+[![Go Report Card](https://goreportcard.com/badge/github.com/xmidt-org/heimdall)](https://goreportcard.com/report/github.com/xmidt-org/heimdall)
+[![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/xmidt-org/heimdall/blob/master/LICENSE)
+[![GitHub release](https://img.shields.io/github/release/xmidt-org/heimdall.svg)](CHANGELOG.md)
 
 
 ## Summary
@@ -15,8 +15,8 @@
 Heimdall provides metrics to determine how accurate Codex is at determining if 
 a device is connected to XMiDT.
 
-For more information on Codex, check out [the Codex README](https://github.com/Comcast/codex).
-For more information on XMiDT, check out [the XMiDT README](https://github.com/Comcast/xmidt).
+For more information on Codex, check out [the Codex README](https://github.com/xmidt-org/codex-deploy).
+For more information on XMiDT, check out [the XMiDT README](https://github.com/xmidt-org/xmidt).
 
 ## Details
 
@@ -30,16 +30,16 @@ version 1.11 or greater. Find more information on the [Go website](https://golan
 
 You can directly use `go get` to put the Heimdall binary into your `GOPATH`:
 ```bash
-GO111MODULE=on go get github.com/Comcast/codex-heimdall
+GO111MODULE=on go get github.com/xmidt-org/heimdall
 ```
 
 You can also clone the repository yourself and build using make:
 
 ```bash
-mkdir -p $GOPATH/src/github.com/Comcast
-cd $GOPATH/src/github.com/Comcast
-git clone git@github.com:Comcast/codex-heimdall.git
-cd codex-heimdall
+mkdir -p $GOPATH/src/github.com/xmidt-org
+cd $GOPATH/src/github.com/xmidt-org
+git clone git@github.com:Comcast/heimdall.git
+cd heimdall
 make build
 ```
 
@@ -85,7 +85,7 @@ WIP. TODO: add info
 
 ## Deploy
 
-For deploying on Docker or in Kubernetes, refer to the [deploy README](https://github.com/Comcast/codex/tree/master/deploy/README.md).
+For deploying on Docker or in Kubernetes, refer to the [deploy README](https://github.com/xmidt-org/codex-deploy/tree/master/deploy/README.md).
 
 For running locally, ensure you have the binary [built](#Source).  If it's in 
 your `GOPATH`, run:
