@@ -2,7 +2,7 @@
 
 [Unit]
 Description=The receiver of data from XMiDT Caduceus.
-Documentation=https://github.com/Comcast/codex-heimdall
+Documentation=https://github.com/xmidt-org/heimdall
 After=network.target
 
 [Service]

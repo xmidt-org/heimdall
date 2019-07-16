@@ -8,15 +8,15 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Comcast/codex/db/postgresql"
+	"github.com/xmidt-org/codex-db/postgresql"
 
-	"github.com/Comcast/codex-heimdall/shuffle"
-	"github.com/Comcast/comcast-bascule/bascule/acquire"
-	"github.com/Comcast/webpa-common/concurrent"
-	"github.com/Comcast/webpa-common/logging"
-	"github.com/Comcast/webpa-common/server"
 	"github.com/goph/emperror"
 	"github.com/prometheus/common/route"
+	"github.com/xmidt-org/bascule/acquire"
+	"github.com/xmidt-org/heimdall/shuffle"
+	"github.com/xmidt-org/webpa-common/concurrent"
+	"github.com/xmidt-org/webpa-common/logging"
+	"github.com/xmidt-org/webpa-common/server"
 
 	"os"
 	"time"
