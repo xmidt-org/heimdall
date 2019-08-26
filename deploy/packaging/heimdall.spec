@@ -3,7 +3,7 @@
 
 Name:       heimdall
 Version:    %{_version}
-Release:    %{_release}
+Release:    %{_release}%{?dist}
 Summary:    The receiver of data from XMiDT Caduceus.
 
 Vendor:     Comcast
