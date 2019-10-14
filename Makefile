@@ -3,10 +3,15 @@ DEFAULT: build
 GO           ?= go
 GOFMT        ?= $(GO)fmt
 DOCKER_ORG   := xmidt
+APP          := heimdall
 FIRST_GOPATH := $(firstword $(subst :, ,$(shell $(GO) env GOPATH)))
 HEIMDALL    := $(FIRST_GOPATH)/bin/heimdall
 
 PROGVER = $(shell git describe --tags `git rev-list --tags --max-count=1` | tail -1 | sed 's/v\(.*\)/\1/')
+RPM_VERSION=$(shell echo $(PROGVER) | sed 's/\(.*\)-\(.*\)/\1/')
+RPM_RELEASE=$(shell echo $(PROGVER) | sed -n 's/.*-\(.*\)/\1/p'  | grep . && (echo "$(echo $(PROGVER) | sed 's/.*-\(.*\)/\1/')") || echo "1")
+BUILDTIME = $(shell date -u '+%Y-%m-%d %H:%M:%S')
+GITCOMMIT = $(shell git rev-parse --short HEAD)
 
 .PHONY: go-mod-vendor
 go-mod-vendor:
@@ -18,16 +23,16 @@ build: go-mod-vendor
 
 rpm:
 	mkdir -p ./OPATH/SOURCES
-	tar -czvf ./OPATH/SOURCES/heimdall-$(PROGVER).tar.gz . --exclude ./.git --exclude ./OPATH --exclude ./conf --exclude ./deploy --exclude ./vendor
-	cp conf/heimdall.service ./OPATH/SOURCES/
-	cp conf/heimdall.yaml  ./OPATH/SOURCES/
+	tar -czvf ./OPATH/SOURCES/$(APP)-$(RPM_VERSION)-$(RPM_RELEASE).tar.gz . --exclude ./.git --exclude ./OPATH --exclude ./conf --exclude ./deploy --exclude ./vendor
+	cp conf/$(APP).service ./OPATH/SOURCES/
+	cp conf/$(APP).yaml  ./OPATH/SOURCES/
 	cp LICENSE ./OPATH/SOURCES/
 	cp NOTICE ./OPATH/SOURCES/
 	cp CHANGELOG.md ./OPATH/SOURCES/
 	rpmbuild --define "_topdir $(CURDIR)/OPATH" \
-    		--define "_version $(PROGVER)" \
-    		--define "_release 1" \
-    		-ba deploy/packaging/heimdall.spec
+		--define "_version $(RPM_VERSION)" \
+		--define "_release $(RPM_RELEASE)" \
+		-ba deploy/packaging/$(APP).spec
 
 .PHONY: version
 version:
@@ -45,26 +50,34 @@ endif
 .PHONY: update-version
 update-version:
 	@echo "Update Version $(PROGVER) to $(RUN_ARGS)"
-	sed -i "s/$(PROGVER)/$(RUN_ARGS)/g" main.go
+	git tag v$(RUN_ARGS)
 
 
 .PHONY: install
 install: go-mod-vendor
-	go install -ldflags "-X 'main.BuildTime=`date -u '+%Y-%m-%d %H:%M:%S'`' -X main.GitCommit=`git rev-parse --short HEAD` -X main.Version=$(PROGVER)"
+	go install -ldflags "-X 'main.BuildTime=$(BUILDTIME)' -X main.GitCommit=$(GITCOMMIT) -X main.Version=$(PROGVER)"
 
 .PHONY: release-artifacts
 release-artifacts: go-mod-vendor
-	GOOS=darwin GOARCH=amd64 go build -ldflags "-X 'main.BuildTime=`date -u '+%Y-%m-%d %H:%M:%S'`' -X main.GitCommit=`git rev-parse --short HEAD` -X main.Version=$(PROGVER)" -o ./OPATH/heimdall-$(PROGVER).darwin-amd64
-	GOOS=linux  GOARCH=amd64 go build -ldflags "-X 'main.BuildTime=`date -u '+%Y-%m-%d %H:%M:%S'`' -X main.GitCommit=`git rev-parse --short HEAD` -X main.Version=$(PROGVER)" -o ./OPATH/heimdall-$(PROGVER).linux-amd64
+	GOOS=darwin GOARCH=amd64 go build -ldflags "-X 'main.BuildTime=$(BUILDTIME)' -X main.GitCommit=$(GITCOMMIT) -X main.Version=$(PROGVER)" -o ./OPATH/heimdall-$(PROGVER).darwin-amd64
+	GOOS=linux  GOARCH=amd64 go build -ldflags "-X 'main.BuildTime=$(BUILDTIME)' -X main.GitCommit=$(GITCOMMIT) -X main.Version=$(PROGVER)" -o ./OPATH/heimdall-$(PROGVER).linux-amd64
 
 .PHONY: docker
 docker:
-	docker build --build-arg VERSION=$(PROGVER) -f ./deploy/Dockerfile -t $(DOCKER_ORG)/heimdall:$(PROGVER) .
+	docker build \
+		--build-arg VERSION=$(PROGVER) \
+		--build-arg GITCOMMIT=$(GITCOMMIT) \
+		--build-arg BUILDTIME='$(BUILDTIME)' \
+		-f ./deploy/Dockerfile -t $(DOCKER_ORG)/heimdall:$(PROGVER) .
 
 # build docker without running modules
 .PHONY: local-docker
 local-docker:
-	docker build --build-arg VERSION=$(PROGVER)+local -f ./deploy/Dockerfile.local -t $(DOCKER_ORG)/heimdall:local .
+	docker build \
+		--build-arg VERSION=$(PROGVER)+local \
+		--build-arg GITCOMMIT=$(GITCOMMIT) \
+		--build-arg BUILDTIME='$(BUILDTIME)' \
+		-f ./deploy/Dockerfile.local -t $(DOCKER_ORG)/heimdall:local .
 
 .PHONY: style
 style:
