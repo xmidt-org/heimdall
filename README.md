@@ -18,6 +18,19 @@ a device is connected to XMiDT.
 For more information on Codex, check out [the Codex README](https://github.com/xmidt-org/codex-deploy).
 For more information on XMiDT, check out [the XMiDT README](https://github.com/xmidt-org/xmidt).
 
+## Table of Contents
+
+- [Code of Conduct](#code-of-conduct)
+- [Details](#details)
+- [Build](#build)
+- [Deploy](#deploy)
+- [Contributing](#contributing)
+
+## Code of Conduct
+
+This project and everyone participating in it are governed by the [XMiDT Code Of Conduct](https://xmidt.io/code_of_conduct/). 
+By participating, you agree to this Code.
+
 ## Details
 
 
