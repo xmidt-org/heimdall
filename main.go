@@ -3,8 +3,10 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net/http"
 	"os/signal"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -30,7 +32,12 @@ import (
 const (
 	applicationName, apiBase = "heimdall", "/api/v1"
 	DEFAULT_KEY_ID           = "current"
-	applicationVersion       = "0.1.6"
+)
+
+var (
+	GitCommit = "undefined"
+	Version   = "undefined"
+	BuildTime = "undefined"
 )
 
 type deviceGetter interface {
@@ -70,20 +77,21 @@ func start(arguments []string) int {
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
 		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, postgresql.Metrics, Metrics)
 	)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to initialize viper: %s\n", err.Error())
-		return 1
-	}
 
 	printVer := f.BoolP("version", "v", false, "displays the version number")
-	if err := f.Parse(arguments); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to parse arguments: %s\n", err.Error())
+	if versionParseErr := f.Parse(arguments); versionParseErr != nil {
+		fmt.Fprintf(os.Stderr, "Failed to parse arguments: %s\n", versionParseErr.Error())
 		return 1
 	}
 
 	if *printVer {
-		fmt.Println(applicationVersion)
+		printVersionInfo(os.Stdout)
 		return 0
+	}
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to initialize viper: %s\n", err.Error())
+		return 1
 	}
 
 	logging.Info(logger).Log(logging.MessageKey(), "Successfully loaded config file", "configurationFile", v.ConfigFileUsed())
@@ -176,6 +184,15 @@ func start(arguments []string) int {
 	}
 
 	return 0
+}
+
+func printVersionInfo(writer io.Writer) {
+	fmt.Fprintf(writer, "%s:\n", applicationName)
+	fmt.Fprintf(writer, "  version: \t%s\n", Version)
+	fmt.Fprintf(writer, "  go version: \t%s\n", runtime.Version())
+	fmt.Fprintf(writer, "  built time: \t%s\n", BuildTime)
+	fmt.Fprintf(writer, "  git commit: \t%s\n", GitCommit)
+	fmt.Fprintf(writer, "  os/arch: \t%s/%s\n", runtime.GOOS, runtime.GOARCH)
 }
 
 func main() {
