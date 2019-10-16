@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/xmidt-org/codex-db/cassandra"
 	"io"
 	"net/http"
 	"os/signal"
@@ -45,7 +46,7 @@ type deviceGetter interface {
 }
 
 type StatusConfig struct {
-	Db           postgresql.Config
+	Db           cassandra.Config
 	CodexAddress string
 	CodexSAT     acquire.RemoteBearerTokenAcquirerOptions
 	XmidtAddress string
@@ -99,7 +100,7 @@ func start(arguments []string) int {
 	config := new(StatusConfig)
 	v.Unmarshal(config)
 
-	dbConn, err := postgresql.CreateDbConnection(config.Db, metricsRegistry, nil)
+	dbConn, err := cassandra.CreateDbConnection(config.Db, metricsRegistry, nil)
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to initialize database connection",
 			logging.ErrorKey(), err.Error())
@@ -118,7 +119,7 @@ func start(arguments []string) int {
 
 	fmt.Println(config.MaxPoolSize)
 
-	codexAuth, err :=  acquire.NewRemoteBearerTokenAcquirer(config.CodexSAT)
+	codexAuth, err := acquire.NewRemoteBearerTokenAcquirer(config.CodexSAT)
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to setup codex Remote Bearer Token Acquirer",
 			logging.ErrorKey(), err.Error())
@@ -126,7 +127,7 @@ func start(arguments []string) int {
 		return 2
 	}
 
-	xmidtAuth, err :=  acquire.NewRemoteBearerTokenAcquirer(config.CodexSAT)
+	xmidtAuth, err := acquire.NewRemoteBearerTokenAcquirer(config.CodexSAT)
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to setup xmidt Remote Bearer Token Acquirer",
 			logging.ErrorKey(), err.Error())
