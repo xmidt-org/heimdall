@@ -37,9 +37,9 @@ type Confidence struct {
 	logger log.Logger
 
 	codexAddress string
-	codexAuth    acquire.JWTAcquirer
+	codexAuth    *acquire.RemoteBearerTokenAcquirer
 	xmidtAddress string
-	xmidtAuth    acquire.JWTAcquirer
+	xmidtAuth    *acquire.RemoteBearerTokenAcquirer
 	wg           sync.WaitGroup
 	measures     *Measures
 	client       func(req *http.Request) (*http.Response, error)

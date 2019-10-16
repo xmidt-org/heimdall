@@ -47,9 +47,9 @@ type deviceGetter interface {
 type StatusConfig struct {
 	Db           postgresql.Config
 	CodexAddress string
-	CodexSAT     acquire.JWTAcquirerOptions
+	CodexSAT     acquire.RemoteBearerTokenAcquirerOptions
 	XmidtAddress string
-	XmidtSAT     acquire.JWTAcquirerOptions
+	XmidtSAT     acquire.RemoteBearerTokenAcquirerOptions
 	ChannelSize  uint64
 	MaxPoolSize  int
 	Sender       SenderConfig
@@ -118,11 +118,27 @@ func start(arguments []string) int {
 
 	fmt.Println(config.MaxPoolSize)
 
+	codexAuth, err :=  acquire.NewRemoteBearerTokenAcquirer(config.CodexSAT)
+	if err != nil {
+		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to setup codex Remote Bearer Token Acquirer",
+			logging.ErrorKey(), err.Error())
+		fmt.Fprintf(os.Stderr, "codex Remote Bearer Token Acquirer Initialize Failed: %#v\n", err)
+		return 2
+	}
+
+	xmidtAuth, err :=  acquire.NewRemoteBearerTokenAcquirer(config.CodexSAT)
+	if err != nil {
+		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to setup xmidt Remote Bearer Token Acquirer",
+			logging.ErrorKey(), err.Error())
+		fmt.Fprintf(os.Stderr, "xmdit Remote Bearer Token Acquirer Initialize Failed: %#v\n", err)
+		return 2
+	}
+
 	confidence := Confidence{
 		codexAddress: config.CodexAddress,
-		codexAuth:    acquire.NewJWTAcquirer(config.CodexSAT),
+		codexAuth:    codexAuth,
 		xmidtAddress: config.XmidtAddress,
-		xmidtAuth:    acquire.NewJWTAcquirer(config.XmidtSAT),
+		xmidtAuth:    xmidtAuth,
 		logger:       logger,
 		measures:     NewMeasures(metricsRegistry),
 		client: (&http.Client{
