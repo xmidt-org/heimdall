@@ -55,10 +55,13 @@ func (confidence *Confidence) handleConfidence(quit chan struct{}, interval time
 			return
 		case <-t.C:
 			go func() {
-				device := getDevice().(string)
+				device := getDevice()
+				if device == nil {
+					return
+				}
 				logging.Debug(confidence.logger).Log(logging.MessageKey(), "testing new device", "device", device)
 				confidence.measures.DeviceSize.Add(-1)
-				confidence.handleDevice(device)
+				confidence.handleDevice(device.(string))
 			}()
 		}
 	}
