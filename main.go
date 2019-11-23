@@ -222,8 +222,8 @@ func populate(conn deviceGetter, input chan interface{}, stop chan struct{}, wg 
 			close(input)
 			return
 		default:
-			beginTime := time.Now().Add(-time.Hour * 12)
-			endTime := beginTime.Add(time.Minute)
+			beginTime := time.Now().Add(-time.Hour * 24)
+			endTime := time.Now()
 			limit := 100
 			offset := 0
 			for {
