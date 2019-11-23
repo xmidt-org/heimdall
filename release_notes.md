@@ -1,1 +1,4 @@
-
+- bumped bascule version to v0.5.0
+- bumped webpa-common to v1.4.0
+- leverage capacityset in shuffle package
+- switch db from cockroach to yugabyte

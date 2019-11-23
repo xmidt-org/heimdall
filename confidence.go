@@ -37,15 +37,15 @@ type Confidence struct {
 	logger log.Logger
 
 	codexAddress string
-	codexAuth    acquire.JWTAcquirer
+	codexAuth    *acquire.RemoteBearerTokenAcquirer
 	xmidtAddress string
-	xmidtAuth    acquire.JWTAcquirer
+	xmidtAuth    *acquire.RemoteBearerTokenAcquirer
 	wg           sync.WaitGroup
 	measures     *Measures
 	client       func(req *http.Request) (*http.Response, error)
 }
 
-func (confidence *Confidence) handleConfidence(quit chan struct{}, interval time.Duration, getDevice func() (interface{}, error)) {
+func (confidence *Confidence) handleConfidence(quit chan struct{}, interval time.Duration, getDevice func() interface{}) {
 	defer confidence.wg.Done()
 	t := time.NewTicker(interval)
 	defer t.Stop()
@@ -55,14 +55,13 @@ func (confidence *Confidence) handleConfidence(quit chan struct{}, interval time
 			return
 		case <-t.C:
 			go func() {
-				item, err := getDevice()
-				if err != nil {
+				device := getDevice()
+				if device == nil {
 					return
 				}
-				device := item.(string)
 				logging.Debug(confidence.logger).Log(logging.MessageKey(), "testing new device", "device", device)
 				confidence.measures.DeviceSize.Add(-1)
-				confidence.handleDevice(device)
+				confidence.handleDevice(device.(string))
 			}()
 		}
 	}

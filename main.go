@@ -3,14 +3,13 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/xmidt-org/codex-db/cassandra"
 	"io"
 	"net/http"
 	"os/signal"
 	"runtime"
 	"strings"
 	"sync"
-
-	"github.com/xmidt-org/codex-db/postgresql"
 
 	"github.com/goph/emperror"
 	"github.com/prometheus/common/route"
@@ -41,15 +40,15 @@ var (
 )
 
 type deviceGetter interface {
-	GetDeviceList(string, int) ([]string, error)
+	GetDeviceList(time.Time, time.Time, int, int) ([]string, error)
 }
 
 type StatusConfig struct {
-	Db           postgresql.Config
+	Db           cassandra.Config
 	CodexAddress string
-	CodexSAT     acquire.JWTAcquirerOptions
+	CodexSAT     acquire.RemoteBearerTokenAcquirerOptions
 	XmidtAddress string
-	XmidtSAT     acquire.JWTAcquirerOptions
+	XmidtSAT     acquire.RemoteBearerTokenAcquirerOptions
 	ChannelSize  uint64
 	MaxPoolSize  int
 	Sender       SenderConfig
@@ -75,7 +74,7 @@ func start(arguments []string) int {
 
 	var (
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
-		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, postgresql.Metrics, Metrics)
+		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, cassandra.Metrics, Metrics)
 	)
 
 	printVer := f.BoolP("version", "v", false, "displays the version number")
@@ -99,7 +98,7 @@ func start(arguments []string) int {
 	config := new(StatusConfig)
 	v.Unmarshal(config)
 
-	dbConn, err := postgresql.CreateDbConnection(config.Db, metricsRegistry, nil)
+	dbConn, err := cassandra.CreateDbConnection(config.Db, metricsRegistry, nil)
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to initialize database connection",
 			logging.ErrorKey(), err.Error())
@@ -118,11 +117,27 @@ func start(arguments []string) int {
 
 	fmt.Println(config.MaxPoolSize)
 
+	codexAuth, err := acquire.NewRemoteBearerTokenAcquirer(config.CodexSAT)
+	if err != nil {
+		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to setup codex Remote Bearer Token Acquirer",
+			logging.ErrorKey(), err.Error())
+		fmt.Fprintf(os.Stderr, "codex Remote Bearer Token Acquirer Initialize Failed: %#v\n", err)
+		return 2
+	}
+
+	xmidtAuth, err := acquire.NewRemoteBearerTokenAcquirer(config.CodexSAT)
+	if err != nil {
+		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to setup xmidt Remote Bearer Token Acquirer",
+			logging.ErrorKey(), err.Error())
+		fmt.Fprintf(os.Stderr, "xmdit Remote Bearer Token Acquirer Initialize Failed: %#v\n", err)
+		return 2
+	}
+
 	confidence := Confidence{
 		codexAddress: config.CodexAddress,
-		codexAuth:    acquire.NewJWTAcquirer(config.CodexSAT),
+		codexAuth:    codexAuth,
 		xmidtAddress: config.XmidtAddress,
-		xmidtAuth:    acquire.NewJWTAcquirer(config.XmidtSAT),
+		xmidtAuth:    xmidtAuth,
 		logger:       logger,
 		measures:     NewMeasures(metricsRegistry),
 		client: (&http.Client{
@@ -133,7 +148,7 @@ func start(arguments []string) int {
 	confidence.wg.Add(1)
 	populateWG.Add(1)
 	incoming, getDevice := shuffle.NewStreamShuffler(config.MaxPoolSize, int(config.ChannelSize))
-	go populate(dbConn, incoming, stopPopulate, populateWG, confidence.measures, config.MaxPoolSize)
+	go populate(dbConn, incoming, stopPopulate, populateWG, confidence.measures)
 
 	// fix interval
 	if config.Tick <= 0 {
@@ -199,28 +214,35 @@ func main() {
 	os.Exit(start(os.Args))
 }
 
-func populate(conn deviceGetter, input chan interface{}, stop chan struct{}, wg sync.WaitGroup, measures *Measures, maxPoolSize int) {
+func populate(conn deviceGetter, input chan interface{}, stop chan struct{}, wg sync.WaitGroup, measures *Measures) {
 	defer wg.Done()
-	lastID := "mac:"
 	for {
 		select {
 		case <-stop:
 			close(input)
 			return
 		default:
-			list, err := conn.GetDeviceList(lastID, 100)
-			if len(list) != 0 {
-				lastID = list[len(list)-1]
-			} else if len(list) == 0 && err == nil {
-				lastID = "mac:"
-			} else if err != nil {
-				fmt.Fprintf(os.Stderr, "%s", err.Error())
-			}
-			for _, elem := range list {
-				if strings.HasPrefix(elem, "mac") {
-					input <- elem
-					measures.DeviceSize.Add(1)
+			beginTime := time.Now().Add(-time.Hour * 12)
+			endTime := beginTime.Add(time.Minute)
+			limit := 100
+			offset := 0
+			for {
+
+				list, err := conn.GetDeviceList(beginTime, endTime, offset, limit)
+				if len(list) == 0 {
+					fmt.Fprintln(os.Stderr, "list is empty")
+					break
+				} else if err != nil {
+					fmt.Fprintf(os.Stderr, "%s", err.Error())
+					break
 				}
+				for _, elem := range list {
+					if strings.HasPrefix(elem, "mac") {
+						input <- elem
+						measures.DeviceSize.Add(1)
+					}
+				}
+				offset += limit
 			}
 		}
 	}

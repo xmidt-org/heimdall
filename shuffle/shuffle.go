@@ -1,56 +1,26 @@
 package shuffle
 
 import (
-	"errors"
-	"sync/atomic"
-
-	mapset "github.com/deckarep/golang-set"
-	"github.com/xmidt-org/webpa-common/semaphore"
+	"github.com/xmidt-org/capacityset"
 )
 
 type stream struct {
 	incoming chan interface{}
-	pool     mapset.Set
-	count    *int64
-	locking  semaphore.Interface
+	pool     capacityset.Set
 }
 
-func (s stream) getItem() (interface{}, error) {
-	count := atomic.LoadInt64(s.count)
-	if count <= 0 {
-		return nil, errors.New("no item in pool")
-	}
-	atomic.AddInt64(s.count, -1)
-
-	// we can accept a new item
-	defer func() { s.locking.Release() }()
-
-	return s.pool.Pop(), nil
-
-}
-
-func NewStreamShuffler(poolSize int, bufferSize int) (chan interface{}, func() (interface{}, error)) {
+func NewStreamShuffler(poolSize int, bufferSize int) (chan interface{}, func() interface{}) {
 	shuffler := stream{
 		incoming: make(chan interface{}, bufferSize),
-		pool:     mapset.NewSet(),
-		locking:  semaphore.New(poolSize),
-		count:    new(int64),
+		pool:     capacityset.NewCapacitySet(poolSize),
 	}
 
 	// leverage the incoming channel to fill the pool
 	go func() {
-		for {
-			shuffler.locking.Acquire()
-			item := <-shuffler.incoming
-			if !shuffler.pool.Add(item) {
-				// item was not added so append to outgoing, so we can try again
-				shuffler.locking.Release()
-			} else {
-				atomic.AddInt64(shuffler.count, 1)
-			}
+		for item := range shuffler.incoming {
+			shuffler.pool.Add(item)
 		}
-
 	}()
 
-	return shuffler.incoming, shuffler.getItem
+	return shuffler.incoming, shuffler.pool.Pop
 }
