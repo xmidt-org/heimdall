@@ -5,11 +5,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- bumped bascule version to v0.5.0
-- bumped webpa-common to v1.4.0
+
+## [v0.2.0]
+- bumped bascule version to v0.7.0
+- bumped webpa-common to v1.5.1
 - leverage capacityset in shuffle package
 - switch db from cockroach to yugabyte
-- bump codex-db to v0.3.2
+- bump codex-db to v0.4.0
 - update time window
 - Updated release pipeline to use travis
 
@@ -32,7 +34,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Added metric labels.
 - Bumped codex for `db` package updates.
 
-[Unreleased]: https://github.com/xmidt-org/heimdall/compare/0.1.6...HEAD
+[Unreleased]: https://github.com/xmidt-org/heimdall/compare/0.2.0...HEAD
+[v0.2.0]: https://github.com/xmidt-org/heimdall/compare/0.1.6...v0.2.0
 [v0.1.6]: https://github.com/xmidt-org/heimdall/compare/0.1.5...v0.1.6
 [v0.1.5]: https://github.com/xmidt-org/heimdall/compare/0.1.4...v0.1.5
 [v0.1.4]: https://github.com/xmidt-org/heimdall/compare/0.1.3...v0.1.4
