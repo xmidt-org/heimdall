@@ -104,6 +104,7 @@ func start(arguments []string) int {
 
 	config := new(StatusConfig)
 	v.Unmarshal(config)
+	validate(config)
 
 	dbConn, err := cassandra.CreateDbConnection(config.Db, metricsRegistry, nil)
 	if err != nil {
@@ -153,15 +154,9 @@ func start(arguments []string) int {
 	confidence.wg.Add(1)
 	populateWG.Add(1)
 	shuffler := shuffle.NewStreamShuffler(config.MaxPoolSize, metricsRegistry)
+
 	go populate(dbConn, config.Window, config.WindowLimit, shuffler, stopPopulate, populateWG, confidence.measures)
 
-	// fix interval
-	if config.Tick <= 0 {
-		config.Tick = time.Second
-	}
-	if config.Rate <= 0 {
-		config.Rate = 5
-	}
 	interval := config.Tick / time.Duration(config.Rate)
 
 	go confidence.handleConfidence(stopConfidence, interval, shuffler.Get)
@@ -204,6 +199,23 @@ func start(arguments []string) int {
 	}
 
 	return 0
+}
+func validate(config *StatusConfig) {
+	// fix interval
+	if config.Tick <= 0 {
+		config.Tick = time.Second
+	}
+	if config.Rate <= 0 {
+		config.Rate = 5
+	}
+
+	// fix window
+	if config.Window == 0 {
+		config.Window = 24 * time.Hour
+	}
+	if config.WindowLimit == 0 {
+		config.WindowLimit = 1024
+	}
 }
 
 func printVersionInfo(writer io.Writer) {
