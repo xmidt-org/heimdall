@@ -12,63 +12,50 @@ func TestGetItem(t *testing.T) {
 	assert := assert.New(t)
 
 	msg := "Hello, World"
+	metricsProvider := xmetricstest.NewProvider(nil, Metrics)
+	steam := NewStreamShuffler(5, metricsProvider)
 
-	incoming, getItem := NewStreamShuffler(5, 5, xmetricstest.NewProvider(nil, nil))
-
-	incoming <- msg
+	steam.Add(msg)
+	metricsProvider.Assert(t, DeviceSetSize)(xmetricstest.Value(1))
 	time.Sleep(time.Millisecond)
-	item := getItem()
+	item := steam.Get()
 	assert.Equal(msg, item)
+	metricsProvider.Assert(t, DeviceSetSize)(xmetricstest.Value(0))
 }
 
 func TestFullPool(t *testing.T) {
-	//assert := assert.New(t)
+	assert := assert.New(t)
+	metricsProvider := xmetricstest.NewProvider(nil, Metrics)
+	steam := NewStreamShuffler(5, metricsProvider)
 
-	incoming, pop := NewStreamShuffler(5, 1, xmetricstest.NewProvider(nil, nil))
-	a := func() {
-		for {
-			fmt.Println("a", pop())
-		}
+	for i := 0; i < 10; i++ {
+		go steam.Add(i)
 	}
+	time.Sleep(time.Millisecond)
 
-	b := func() {
-		for {
-			fmt.Println("b", pop())
-		}
+	metricsProvider.Assert(t, DeviceSetSize)(xmetricstest.Value(5))
+	data := map[interface{}]int{}
+	item := steam.Get()
+	assert.NotNil(item)
+	data[item]++
+
+	time.Sleep(time.Millisecond)
+	metricsProvider.Assert(t, DeviceSetSize)(xmetricstest.Value(5))
+	for i := 0; i < 5; i++ {
+		item := steam.Get()
+		assert.NotNil(item)
+		data[item]++
 	}
-	go a()
-	go b()
+	time.Sleep(time.Millisecond)
 
-
-	incoming <- 1
-	incoming <- 2
-	incoming <- 3
-	incoming <- 4
-	incoming <- 1
-	// pool should be full. now and one for the buffer
-	incoming <- 1
-	// one for transition
-	incoming <- 1
-	incoming <- 2
-	// buffer should now be full.
-	incoming <- 1
-	incoming <- 2
-	incoming <- 1
-	incoming <- 2
-	incoming <- 1
-	incoming <- 2
-	incoming <- 1
-	incoming <- 2
-	incoming <- 1
-	incoming <- 2
-	incoming <- 1
-	incoming <- 2
-	//select {
-	//case incoming <- 9:
-	//	assert.Fail("Device Pool should be filled")
-	//default:
-	//}
-
-
-	time.Sleep(time.Second *10)
+	metricsProvider.Assert(t, DeviceSetSize)(xmetricstest.Value(4))
+	for i := 0; i < 4; i++ {
+		item := steam.Get()
+		assert.NotNil(item)
+		data[item]++
+	}
+	metricsProvider.Assert(t, DeviceSetSize)(xmetricstest.Value(0))
+	for key, value := range data {
+		assert.Equal(1, value, fmt.Sprintf("error with key %s", key))
+	}
 }

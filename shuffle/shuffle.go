@@ -1,45 +1,50 @@
 package shuffle
 
 import (
+	"github.com/deckarep/golang-set"
 	"github.com/go-kit/kit/metrics/provider"
-	"github.com/hashicorp/golang-lru"
+	"github.com/xmidt-org/webpa-common/semaphore"
 )
 
-type stream struct {
-	incoming chan interface{}
-	pool     *lru.Cache
-	measures *Measures
+type Interface interface {
+	Add(interface{})
+	Get() interface{}
 }
 
-func NewStreamShuffler(poolSize int, bufferSize int, provider provider.Provider) (chan interface{}, func() interface{}) {
-	cache, err := lru.New(poolSize)
-	if err != nil {
-		panic(err)
+type stream struct {
+	set       mapset.Set
+	measures  *Measures
+	semaphore semaphore.Interface
+}
+
+func (s *stream) Add(key interface{}) {
+	if s.set.Contains(key) {
+		return
 	}
+	s.semaphore.Acquire()
+	if ok := s.set.Add(key); ok {
+		s.measures.DeviceSize.Add(1.0)
+	}
+}
+
+func (s *stream) Get() interface{} {
+	var value interface{}
+	// keep popping til value is not nil
+	for value == nil {
+		value = s.set.Pop()
+	}
+	s.semaphore.Release()
+	s.measures.DeviceSize.Add(-1.0)
+	return value
+}
+
+func NewStreamShuffler(poolSize int, provider provider.Provider) Interface {
+
 	shuffler := stream{
-		incoming: make(chan interface{}, bufferSize),
-		pool:     cache,
-		measures: NewMeasures(provider),
+		semaphore: semaphore.New(poolSize),
+		set:       mapset.NewSet(),
+		measures:  NewMeasures(provider),
 	}
 
-	// leverage the incoming channel to fill the pool
-	go func() {
-		for item := range shuffler.incoming {
-			if evicted := shuffler.pool.Add(item, true); !evicted {
-				shuffler.measures.DeviceSize.Add(1)
-			}
-		}
-	}()
-
-	return shuffler.incoming, func() interface{} {
-		if item, _, ok := shuffler.pool.GetOldest(); !ok {
-			return nil
-		} else {
-			if present := shuffler.pool.Remove(item); present {
-				shuffler.measures.DeviceSize.Add(-1)
-			}
-			return item
-		}
-
-	}
+	return &shuffler
 }

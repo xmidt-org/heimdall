@@ -122,8 +122,6 @@ func start(arguments []string) int {
 		IdleConnTimeout:       config.Sender.IdleConnTimeout,
 	}
 
-	fmt.Println(config.MaxPoolSize)
-
 	codexAuth, err := acquire.NewRemoteBearerTokenAcquirer(config.CodexSAT)
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to setup codex Remote Bearer Token Acquirer",
@@ -154,8 +152,8 @@ func start(arguments []string) int {
 	}
 	confidence.wg.Add(1)
 	populateWG.Add(1)
-	incoming, getDevice := shuffle.NewStreamShuffler(config.MaxPoolSize, int(config.ChannelSize), metricsRegistry)
-	go populate(dbConn, config.Window, config.WindowLimit, incoming, stopPopulate, populateWG, confidence.measures)
+	shuffler := shuffle.NewStreamShuffler(config.MaxPoolSize, metricsRegistry)
+	go populate(dbConn, config.Window, config.WindowLimit, shuffler, stopPopulate, populateWG, confidence.measures)
 
 	// fix interval
 	if config.Tick <= 0 {
@@ -166,7 +164,7 @@ func start(arguments []string) int {
 	}
 	interval := config.Tick / time.Duration(config.Rate)
 
-	go confidence.handleConfidence(stopConfidence, interval, getDevice)
+	go confidence.handleConfidence(stopConfidence, interval, shuffler.Get)
 
 	_, runnable, done := codex.Prepare(logger, nil, metricsRegistry, route.New())
 
@@ -221,12 +219,11 @@ func main() {
 	os.Exit(start(os.Args))
 }
 
-func populate(conn deviceGetter, window time.Duration, windowLimit int, input chan interface{}, stop chan struct{}, wg sync.WaitGroup, measures *Measures) {
-	defer wg.Done()
+func populate(conn deviceGetter, window time.Duration, windowLimit int, shuffler shuffle.Interface, stop chan struct{}, wg sync.WaitGroup, measures *Measures) {
 	for {
 		select {
 		case <-stop:
-			close(input)
+			wg.Done()
 			return
 		default:
 			beginTime := time.Now().Add(-window).UnixNano()
@@ -250,7 +247,7 @@ func populate(conn deviceGetter, window time.Duration, windowLimit int, input ch
 			}
 			for _, elem := range list {
 				if strings.HasPrefix(elem, "mac") {
-					input <- elem
+					go shuffler.Add(elem)
 				}
 			}
 		}
