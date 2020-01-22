@@ -119,12 +119,25 @@ log:
   json: true
 
 
-
-channelSize: 10000
+# maxPoolSize is for limiting the number of device ids to store in memory.
 maxPoolSize: 1000000
 
+# tick is the unit of time for rate.
+# The value of tick may be anything parseable by the golang standard library (see ParseDuration).
+# (optional) default 1s
 tick: 1s
+# rate is the number of requests per unit time (tick) to send.
+# (optional) default 5
 rate: 5
+
+# window, how long to look in the past to retrieve device ids.
+# The value of tick may be anything parseable by the golang standard library (see ParseDuration).
+# (optional) default 24h
+window: 168h
+
+# windowLimit is the max number of devices to get from the databse.
+# (optional) default 1024
+windowLimit: 1024
 
 
 gungnirAddress: "https://codex.example.net"
