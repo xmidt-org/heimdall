@@ -1,7 +1,9 @@
 package shuffle
 
 import (
+	"fmt"
 	"github.com/stretchr/testify/assert"
+	"github.com/xmidt-org/webpa-common/xmetrics/xmetricstest"
 	"testing"
 	"time"
 )
@@ -10,36 +12,50 @@ func TestGetItem(t *testing.T) {
 	assert := assert.New(t)
 
 	msg := "Hello, World"
+	metricsProvider := xmetricstest.NewProvider(nil, Metrics)
+	steam := NewStreamShuffler(5, metricsProvider)
 
-	incoming, getItem := NewStreamShuffler(5, 5)
-
-	incoming <- msg
+	steam.Add(msg)
+	metricsProvider.Assert(t, DeviceSetSize)(xmetricstest.Value(1))
 	time.Sleep(time.Millisecond)
-	item := getItem()
+	item := steam.Get()
 	assert.Equal(msg, item)
+	metricsProvider.Assert(t, DeviceSetSize)(xmetricstest.Value(0))
 }
 
 func TestFullPool(t *testing.T) {
 	assert := assert.New(t)
+	metricsProvider := xmetricstest.NewProvider(nil, Metrics)
+	steam := NewStreamShuffler(5, metricsProvider)
 
-	incoming, _ := NewStreamShuffler(5, 2)
-
-	incoming <- 1
-	incoming <- 2
-	incoming <- 3
-	incoming <- 4
-	incoming <- 5
-	// pool should be full. now and one for the buffer
-	incoming <- 6
-	// one for transition
-	incoming <- 7
-	incoming <- 8
-	// buffer should now be full.
-
-	select {
-	case incoming <- 9:
-		assert.Fail("Device Pool should be filled")
-	default:
+	for i := 0; i < 10; i++ {
+		go steam.Add(i)
 	}
+	time.Sleep(time.Millisecond)
 
+	metricsProvider.Assert(t, DeviceSetSize)(xmetricstest.Value(5))
+	data := map[interface{}]int{}
+	item := steam.Get()
+	assert.NotNil(item)
+	data[item]++
+
+	time.Sleep(time.Millisecond)
+	metricsProvider.Assert(t, DeviceSetSize)(xmetricstest.Value(5))
+	for i := 0; i < 5; i++ {
+		item := steam.Get()
+		assert.NotNil(item)
+		data[item]++
+	}
+	time.Sleep(time.Millisecond)
+
+	metricsProvider.Assert(t, DeviceSetSize)(xmetricstest.Value(4))
+	for i := 0; i < 4; i++ {
+		item := steam.Get()
+		assert.NotNil(item)
+		data[item]++
+	}
+	metricsProvider.Assert(t, DeviceSetSize)(xmetricstest.Value(0))
+	for key, value := range data {
+		assert.Equal(1, value, fmt.Sprintf("error with key %s", key))
+	}
 }

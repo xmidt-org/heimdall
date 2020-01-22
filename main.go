@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/xmidt-org/codex-db/cassandra"
 	"io"
+	"math/rand"
 	"net/http"
 	"os/signal"
 	"runtime"
@@ -59,6 +60,12 @@ type StatusConfig struct {
 	// Tick is the time unit for the Rate field.  If Rate is set but this field is not set,
 	// a tick of 1 second is used as the default.
 	Tick time.Duration
+
+	// Window, how long to look in the past to retrieve deviceIds.
+	Window time.Duration
+
+	// WindowLimit max number to get from a random time window
+	WindowLimit int
 }
 
 type SenderConfig struct {
@@ -74,7 +81,7 @@ func start(arguments []string) int {
 
 	var (
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
-		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, cassandra.Metrics, Metrics)
+		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, cassandra.Metrics, Metrics, shuffle.Metrics)
 	)
 
 	printVer := f.BoolP("version", "v", false, "displays the version number")
@@ -97,6 +104,7 @@ func start(arguments []string) int {
 
 	config := new(StatusConfig)
 	v.Unmarshal(config)
+	validate(config)
 
 	dbConn, err := cassandra.CreateDbConnection(config.Db, metricsRegistry, nil)
 	if err != nil {
@@ -114,8 +122,6 @@ func start(arguments []string) int {
 		ResponseHeaderTimeout: config.Sender.ResponseHeaderTimeout,
 		IdleConnTimeout:       config.Sender.IdleConnTimeout,
 	}
-
-	fmt.Println(config.MaxPoolSize)
 
 	codexAuth, err := acquire.NewRemoteBearerTokenAcquirer(config.CodexSAT)
 	if err != nil {
@@ -147,19 +153,13 @@ func start(arguments []string) int {
 	}
 	confidence.wg.Add(1)
 	populateWG.Add(1)
-	incoming, getDevice := shuffle.NewStreamShuffler(config.MaxPoolSize, int(config.ChannelSize))
-	go populate(dbConn, incoming, stopPopulate, populateWG, confidence.measures)
+	shuffler := shuffle.NewStreamShuffler(config.MaxPoolSize, metricsRegistry)
 
-	// fix interval
-	if config.Tick <= 0 {
-		config.Tick = time.Second
-	}
-	if config.Rate <= 0 {
-		config.Rate = 5
-	}
+	go populate(dbConn, config.Window, config.WindowLimit, shuffler, stopPopulate, populateWG, confidence.measures)
+
 	interval := config.Tick / time.Duration(config.Rate)
 
-	go confidence.handleConfidence(stopConfidence, interval, getDevice)
+	go confidence.handleConfidence(stopConfidence, interval, shuffler.Get)
 
 	_, runnable, done := codex.Prepare(logger, nil, metricsRegistry, route.New())
 
@@ -200,6 +200,23 @@ func start(arguments []string) int {
 
 	return 0
 }
+func validate(config *StatusConfig) {
+	// fix interval
+	if config.Tick <= 0 {
+		config.Tick = time.Second
+	}
+	if config.Rate <= 0 {
+		config.Rate = 5
+	}
+
+	// fix window
+	if config.Window == 0 {
+		config.Window = 24 * time.Hour
+	}
+	if config.WindowLimit == 0 {
+		config.WindowLimit = 1024
+	}
+}
 
 func printVersionInfo(writer io.Writer) {
 	fmt.Fprintf(writer, "%s:\n", applicationName)
@@ -214,35 +231,36 @@ func main() {
 	os.Exit(start(os.Args))
 }
 
-func populate(conn deviceGetter, input chan interface{}, stop chan struct{}, wg sync.WaitGroup, measures *Measures) {
-	defer wg.Done()
+func populate(conn deviceGetter, window time.Duration, windowLimit int, shuffler shuffle.Interface, stop chan struct{}, wg sync.WaitGroup, measures *Measures) {
 	for {
 		select {
 		case <-stop:
-			close(input)
+			wg.Done()
 			return
 		default:
-			beginTime := time.Now().Add(-time.Hour * 24)
-			endTime := time.Now()
-			limit := 100
-			offset := 0
-			for {
+			beginTime := time.Now().Add(-window).UnixNano()
+			endTime := time.Now().UnixNano()
 
-				list, err := conn.GetDeviceList(beginTime, endTime, offset, limit)
-				if len(list) == 0 {
-					fmt.Fprintln(os.Stderr, "list is empty")
-					break
-				} else if err != nil {
-					fmt.Fprintf(os.Stderr, "%s", err.Error())
-					break
+			windowLower := beginTime + rand.Int63n(endTime-beginTime)
+			windowHigher := beginTime + rand.Int63n(endTime-beginTime)
+			if windowLower > windowHigher {
+				temp := windowHigher
+				windowHigher = windowLower
+				windowLower = temp
+			}
+
+			list, err := conn.GetDeviceList(time.Unix(0, windowLower), time.Unix(0, windowHigher), 0, windowLimit)
+			if len(list) == 0 {
+				fmt.Fprintln(os.Stderr, "list is empty")
+				break
+			} else if err != nil {
+				fmt.Fprintf(os.Stderr, "%s", err.Error())
+				break
+			}
+			for _, elem := range list {
+				if strings.HasPrefix(elem, "mac") {
+					go shuffler.Add(elem)
 				}
-				for _, elem := range list {
-					if strings.HasPrefix(elem, "mac") {
-						input <- elem
-						measures.DeviceSize.Add(1)
-					}
-				}
-				offset += limit
 			}
 		}
 	}
