@@ -1,26 +1,45 @@
 package shuffle
 
 import (
-	"github.com/xmidt-org/capacityset"
+	"github.com/go-kit/kit/metrics/provider"
+	"github.com/hashicorp/golang-lru"
 )
 
 type stream struct {
 	incoming chan interface{}
-	pool     capacityset.Set
+	pool     *lru.Cache
+	measures *Measures
 }
 
-func NewStreamShuffler(poolSize int, bufferSize int) (chan interface{}, func() interface{}) {
+func NewStreamShuffler(poolSize int, bufferSize int, provider provider.Provider) (chan interface{}, func() interface{}) {
+	cache, err := lru.New(poolSize)
+	if err != nil {
+		panic(err)
+	}
 	shuffler := stream{
 		incoming: make(chan interface{}, bufferSize),
-		pool:     capacityset.NewCapacitySet(poolSize),
+		pool:     cache,
+		measures: NewMeasures(provider),
 	}
 
 	// leverage the incoming channel to fill the pool
 	go func() {
 		for item := range shuffler.incoming {
-			shuffler.pool.Add(item)
+			if evicted := shuffler.pool.Add(item, true); !evicted {
+				shuffler.measures.DeviceSize.Add(1)
+			}
 		}
 	}()
 
-	return shuffler.incoming, shuffler.pool.Pop
+	return shuffler.incoming, func() interface{} {
+		if item, _, ok := shuffler.pool.GetOldest(); !ok {
+			return nil
+		} else {
+			if present := shuffler.pool.Remove(item); present {
+				shuffler.measures.DeviceSize.Add(-1)
+			}
+			return item
+		}
+
+	}
 }

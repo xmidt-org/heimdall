@@ -60,7 +60,6 @@ func (confidence *Confidence) handleConfidence(quit chan struct{}, interval time
 					return
 				}
 				logging.Debug(confidence.logger).Log(logging.MessageKey(), "testing new device", "device", device)
-				confidence.measures.DeviceSize.Add(-1)
 				confidence.handleDevice(device.(string))
 			}()
 		}
@@ -89,7 +88,7 @@ func (confidence *Confidence) handleDevice(device string) {
 	confidence.measures.Completed.Add(1)
 	if codex == xmidt {
 		confidence.measures.Success.With(StateLabel, state).Add(1)
-		logging.Debug(confidence.logger).Log(logging.MessageKey(), "YAY")
+		logging.Debug(confidence.logger).Log(logging.MessageKey(), "YAY, devices matched")
 	} else {
 		confidence.measures.Failure.With(StateLabel, state).Add(1)
 		logging.Info(confidence.logger).Log(logging.MessageKey(), "XMiDT and Codex don't match", "xmidt-online", xmidt, "codex-online", codex, "device", device)
@@ -117,7 +116,9 @@ func (confidence *Confidence) codexOnline(device string) bool {
 	}
 
 	if status != 200 {
-		logging.Error(confidence.logger).Log("status", status, logging.MessageKey(), "non 200", "url", request.URL, "auth", request.Header.Get("Authorization"))
+		if status != 404 {
+			logging.Error(confidence.logger).Log("status", status, logging.MessageKey(), "non 200", "url", request.URL, "auth", request.Header.Get("Authorization"), "device", device)
+		}
 		return false
 	}
 
@@ -151,7 +152,9 @@ func (confidence *Confidence) xmidtOnline(device string) bool {
 	}
 
 	if status != 200 {
-		logging.Error(confidence.logger).Log("status", status, logging.MessageKey(), "non 200")
+		if status != 404 {
+			logging.Error(confidence.logger).Log("status", status, logging.MessageKey(), "non 200", "url", request.URL, "auth", request.Header.Get("Authorization"), "device", device)
+		}
 		return false
 	}
 	return true

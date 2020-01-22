@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/xmidt-org/codex-db/cassandra"
 	"io"
+	"math/rand"
 	"net/http"
 	"os/signal"
 	"runtime"
@@ -59,6 +60,12 @@ type StatusConfig struct {
 	// Tick is the time unit for the Rate field.  If Rate is set but this field is not set,
 	// a tick of 1 second is used as the default.
 	Tick time.Duration
+
+	// Window, how long to look in the past to retrieve deviceIds.
+	Window time.Duration
+
+	// WindowLimit max number to get from a random time window
+	WindowLimit int
 }
 
 type SenderConfig struct {
@@ -74,7 +81,7 @@ func start(arguments []string) int {
 
 	var (
 		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
-		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, cassandra.Metrics, Metrics)
+		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, cassandra.Metrics, Metrics, shuffle.Metrics)
 	)
 
 	printVer := f.BoolP("version", "v", false, "displays the version number")
@@ -147,8 +154,8 @@ func start(arguments []string) int {
 	}
 	confidence.wg.Add(1)
 	populateWG.Add(1)
-	incoming, getDevice := shuffle.NewStreamShuffler(config.MaxPoolSize, int(config.ChannelSize))
-	go populate(dbConn, incoming, stopPopulate, populateWG, confidence.measures)
+	incoming, getDevice := shuffle.NewStreamShuffler(config.MaxPoolSize, int(config.ChannelSize), metricsRegistry)
+	go populate(dbConn, config.Window, config.WindowLimit, incoming, stopPopulate, populateWG, confidence.measures)
 
 	// fix interval
 	if config.Tick <= 0 {
@@ -214,7 +221,7 @@ func main() {
 	os.Exit(start(os.Args))
 }
 
-func populate(conn deviceGetter, input chan interface{}, stop chan struct{}, wg sync.WaitGroup, measures *Measures) {
+func populate(conn deviceGetter, window time.Duration, windowLimit int, input chan interface{}, stop chan struct{}, wg sync.WaitGroup, measures *Measures) {
 	defer wg.Done()
 	for {
 		select {
@@ -222,27 +229,29 @@ func populate(conn deviceGetter, input chan interface{}, stop chan struct{}, wg 
 			close(input)
 			return
 		default:
-			beginTime := time.Now().Add(-time.Hour * 24)
-			endTime := time.Now()
-			limit := 100
-			offset := 0
-			for {
+			beginTime := time.Now().Add(-window).UnixNano()
+			endTime := time.Now().UnixNano()
 
-				list, err := conn.GetDeviceList(beginTime, endTime, offset, limit)
-				if len(list) == 0 {
-					fmt.Fprintln(os.Stderr, "list is empty")
-					break
-				} else if err != nil {
-					fmt.Fprintf(os.Stderr, "%s", err.Error())
-					break
+			windowLower := beginTime + rand.Int63n(endTime-beginTime)
+			windowHigher := beginTime + rand.Int63n(endTime-beginTime)
+			if windowLower > windowHigher {
+				temp := windowHigher
+				windowHigher = windowLower
+				windowLower = temp
+			}
+
+			list, err := conn.GetDeviceList(time.Unix(0, windowLower), time.Unix(0, windowHigher), 0, windowLimit)
+			if len(list) == 0 {
+				fmt.Fprintln(os.Stderr, "list is empty")
+				break
+			} else if err != nil {
+				fmt.Fprintf(os.Stderr, "%s", err.Error())
+				break
+			}
+			for _, elem := range list {
+				if strings.HasPrefix(elem, "mac") {
+					input <- elem
 				}
-				for _, elem := range list {
-					if strings.HasPrefix(elem, "mac") {
-						input <- elem
-						measures.DeviceSize.Add(1)
-					}
-				}
-				offset += limit
 			}
 		}
 	}

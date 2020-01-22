@@ -10,7 +10,6 @@ const (
 	CompletedCounter = "completed_count"
 	SuccessCounter   = "success_count"
 	FailureCounter   = "failure_count"
-	DeviceSetSize    = "device_set_size"
 )
 
 const (
@@ -40,27 +39,20 @@ func Metrics() []xmetrics.Metric {
 			Type:       "counter",
 			LabelNames: []string{StateLabel},
 		},
-		{
-			Name: DeviceSetSize,
-			Help: "The total number of devices in the set",
-			Type: "gauge",
-		},
 	}
 }
 
 type Measures struct {
-	Completed  metrics.Counter
-	Success    metrics.Counter
-	Failure    metrics.Counter
-	DeviceSize metrics.Gauge
+	Completed metrics.Counter
+	Success   metrics.Counter
+	Failure   metrics.Counter
 }
 
 // NewMeasures constructs a Measures given a go-kit metrics Provider
 func NewMeasures(p provider.Provider) *Measures {
 	return &Measures{
-		Completed:  p.NewCounter(CompletedCounter),
-		Success:    p.NewCounter(SuccessCounter),
-		Failure:    p.NewCounter(FailureCounter),
-		DeviceSize: p.NewGauge(DeviceSetSize),
+		Completed: p.NewCounter(CompletedCounter),
+		Success:   p.NewCounter(SuccessCounter),
+		Failure:   p.NewCounter(FailureCounter),
 	}
 }
