@@ -232,9 +232,17 @@ func main() {
 }
 
 func populate(conn deviceGetter, window time.Duration, windowLimit int, shuffler shuffle.Interface, stop chan struct{}, wg sync.WaitGroup, measures *Measures) {
+	// start worker pool
+	jobs := make(chan string, windowLimit)
+	for i := 0; i < windowLimit; i++ {
+		go worker(jobs, shuffler)
+	}
+
+	// start populater
 	for {
 		select {
 		case <-stop:
+			close(jobs)
 			wg.Done()
 			return
 		default:
@@ -259,9 +267,15 @@ func populate(conn deviceGetter, window time.Duration, windowLimit int, shuffler
 			}
 			for _, elem := range list {
 				if strings.HasPrefix(elem, "mac") {
-					go shuffler.Add(elem)
+					jobs <- elem
 				}
 			}
 		}
+	}
+}
+
+func worker(jobs <-chan string, shuffler shuffle.Interface) {
+	for device := range jobs {
+		shuffler.Add(device)
 	}
 }
