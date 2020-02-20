@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/xmidt-org/codex-db/cassandra"
 	"io"
 	"math/rand"
 	"net/http"
@@ -11,6 +10,8 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/xmidt-org/codex-db/cassandra"
 
 	"github.com/goph/emperror"
 	"github.com/prometheus/common/route"
@@ -131,7 +132,7 @@ func start(arguments []string) int {
 		return 2
 	}
 
-	xmidtAuth, err := acquire.NewRemoteBearerTokenAcquirer(config.CodexSAT)
+	xmidtAuth, err := acquire.NewRemoteBearerTokenAcquirer(config.XmidtSAT)
 	if err != nil {
 		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to setup xmidt Remote Bearer Token Acquirer",
 			logging.ErrorKey(), err.Error())
