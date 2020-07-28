@@ -1,12 +1,12 @@
 # heimdall
 (pronounced “hem-dahl”)
 
-[![Build Status](https://travis-ci.com/xmidt-org/heimdall.svg?branch=master)](https://travis-ci.com/xmidt-org/heimdall)
-[![codecov.io](http://codecov.io/github/xmidt-org/heimdall/coverage.svg?branch=master)](http://codecov.io/github/xmidt-org/heimdall?branch=master)
+[![Build Status](https://travis-ci.com/xmidt-org/heimdall.svg?branch=main)](https://travis-ci.com/xmidt-org/heimdall)
+[![codecov.io](http://codecov.io/github/xmidt-org/heimdall/coverage.svg?branch=main)](http://codecov.io/github/xmidt-org/heimdall?branch=main)
 [![Code Climate](https://codeclimate.com/github/xmidt-org/heimdall/badges/gpa.svg)](https://codeclimate.com/github/xmidt-org/heimdall)
 [![Issue Count](https://codeclimate.com/github/xmidt-org/heimdall/badges/issue_count.svg)](https://codeclimate.com/github/xmidt-org/heimdall)
 [![Go Report Card](https://goreportcard.com/badge/github.com/xmidt-org/heimdall)](https://goreportcard.com/report/github.com/xmidt-org/heimdall)
-[![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/xmidt-org/heimdall/blob/master/LICENSE)
+[![Apache V2 License](http://img.shields.io/badge/license-Apache%20V2-blue.svg)](https://github.com/xmidt-org/heimdall/blob/main/LICENSE)
 [![GitHub release](https://img.shields.io/github/release/xmidt-org/heimdall.svg)](CHANGELOG.md)
 
 
@@ -106,7 +106,7 @@ WIP. TODO: add info
 
 ## Deploy
 
-For deploying on Docker or in Kubernetes, refer to the [deploy README](https://github.com/xmidt-org/codex-deploy/tree/master/deploy/README.md).
+For deploying on Docker or in Kubernetes, refer to the [deploy README](https://github.com/xmidt-org/codex-deploy/tree/main/deploy/README.md).
 
 For running locally, ensure you have the binary [built](#Source).  If it's in 
 your `GOPATH`, run:
