@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Migrate to github actions, normalize analysis tools, Dockerfiles and Makefiles. [#27](https://github.com/xmidt-org/heimdall/pull/27)
 - Updated references to the main branch [#23](https://github.com/xmidt-org/heimdall/pull/23)
 - bumped bascule to remove security vulnerability. [#31](https://github.com/xmidt-org/heimdall/pull/31)
+- Updated spec file and rpkg version macro to be able to choose when the 'v' is included in the version. [#32](https://github.com/xmidt-org/heimdall/pull/32)
 
 ## [v0.3.0]
 - improve logging
