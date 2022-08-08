@@ -10,7 +10,7 @@ require (
 	github.com/prometheus/common v0.19.0
 	github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper v1.7.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.8.0
 	github.com/xmidt-org/bascule v0.10.2
 	github.com/xmidt-org/codex-db v0.5.0
 	github.com/xmidt-org/webpa-common v1.11.5
