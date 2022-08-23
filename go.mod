@@ -13,5 +13,5 @@ require (
 	github.com/stretchr/testify v1.8.0
 	github.com/xmidt-org/bascule v0.10.2
 	github.com/xmidt-org/codex-db v0.7.1
-	github.com/xmidt-org/webpa-common v1.11.9
+	github.com/xmidt-org/webpa-common v1.11.5
 )
