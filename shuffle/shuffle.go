@@ -1,9 +1,9 @@
 package shuffle
 
 import (
-	"github.com/deckarep/golang-set"
+	mapset "github.com/deckarep/golang-set"
 	"github.com/go-kit/kit/metrics/provider"
-	"github.com/xmidt-org/webpa-common/semaphore"
+	"github.com/xmidt-org/webpa-common/v2/semaphore"
 )
 
 type Interface interface {
