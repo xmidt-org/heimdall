@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/kit/log"
-	"github.com/xmidt-org/webpa-common/v2/logging"
-	"github.com/xmidt-org/webpa-common/v2/xhttp"
+	"github.com/go-kit/log"
+	"github.com/xmidt-org/webpa-common/v2/logging" // nolint:staticcheck
+	"github.com/xmidt-org/webpa-common/v2/xhttp"   // nolint: staticcheck
 
 	"github.com/xmidt-org/bascule/acquire"
 )
@@ -159,7 +159,7 @@ func (confidence *Confidence) doRequest(request *http.Request) (int, []byte, err
 		ShouldRetry:       func(error) bool { return true },
 		ShouldRetryStatus: func(code int) bool { return false },
 	}
-	res, err := xhttp.RetryTransactor(retryOptions, confidence.client)(request)
+	res, err := xhttp.RetryTransactor(retryOptions, confidence.client)(request) // nolint: bodyclose
 
 	if err != nil {
 		logging.Error(confidence.logger).Log(logging.ErrorKey(), err, logging.MessageKey(), "RetryTransactor failed")

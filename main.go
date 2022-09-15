@@ -10,17 +10,17 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/go-kit/kit/log"
+	"github.com/go-kit/log"
 	"github.com/xmidt-org/codex-db/cassandra"
-	"github.com/xmidt-org/webpa-common/v2/xmetrics"
+	"github.com/xmidt-org/webpa-common/v2/xmetrics" // nolint: staticcheck
 
 	"github.com/goph/emperror"
 	"github.com/prometheus/common/route"
 	"github.com/xmidt-org/bascule/acquire"
 	"github.com/xmidt-org/heimdall/shuffle"
-	"github.com/xmidt-org/webpa-common/v2/concurrent"
-	"github.com/xmidt-org/webpa-common/v2/logging"
-	"github.com/xmidt-org/webpa-common/v2/server"
+	"github.com/xmidt-org/webpa-common/v2/concurrent" // nolint: staticcheck
+	"github.com/xmidt-org/webpa-common/v2/logging"    // nolint: staticcheck
+	"github.com/xmidt-org/webpa-common/v2/server"     // nolint: staticcheck
 
 	"os"
 	"time"
@@ -90,7 +90,7 @@ func start(arguments []string) int {
 	populateWG.Add(1)
 	shuffler := shuffle.NewStreamShuffler(config.MaxPoolSize, metricsRegistry)
 
-	go populate(dbConn, config.Window, config.WindowLimit, shuffler, stopPopulate, populateWG, confidence.measures)
+	go populate(dbConn, config.Window, config.WindowLimit, shuffler, stopPopulate, &populateWG, confidence.measures)
 
 	interval := config.Tick / time.Duration(config.Rate)
 
@@ -249,7 +249,7 @@ func main() {
 	os.Exit(start(os.Args))
 }
 
-func populate(conn deviceGetter, window time.Duration, windowLimit int, shuffler shuffle.Interface, stop chan struct{}, wg sync.WaitGroup, measures *Measures) {
+func populate(conn deviceGetter, window time.Duration, windowLimit int, shuffler shuffle.Interface, stop chan struct{}, wg *sync.WaitGroup, measures *Measures) {
 	// start worker pool
 	jobs := make(chan string, windowLimit)
 	for i := 0; i < windowLimit; i++ {
@@ -267,8 +267,8 @@ func populate(conn deviceGetter, window time.Duration, windowLimit int, shuffler
 			beginTime := time.Now().Add(-window).UnixNano()
 			endTime := time.Now().UnixNano()
 
-			windowLower := beginTime + rand.Int63n(endTime-beginTime)
-			windowHigher := beginTime + rand.Int63n(endTime-beginTime)
+			windowLower := beginTime + rand.Int63n(endTime-beginTime)  // nolint: gosec
+			windowHigher := beginTime + rand.Int63n(endTime-beginTime) // nolint: gosec
 			if windowLower > windowHigher {
 				temp := windowHigher
 				windowHigher = windowLower
