@@ -2,10 +2,11 @@ package shuffle
 
 import (
 	"fmt"
-	"github.com/stretchr/testify/assert"
-	"github.com/xmidt-org/webpa-common/xmetrics/xmetricstest"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/xmidt-org/webpa-common/v2/xmetrics/xmetricstest"
 )
 
 func TestGetItem(t *testing.T) {
