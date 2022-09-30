@@ -5,6 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+- Patch failing Dockerfile, fix linter issues [#54](https://github.com/xmidt-org/heimdall/pull/54)
 
 ## [v0.3.1]
 - Migrate to github actions, normalize analysis tools, Dockerfiles and Makefiles. [#27](https://github.com/xmidt-org/heimdall/pull/27)

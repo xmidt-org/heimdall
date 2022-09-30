@@ -1,7 +1,6 @@
 package main
 
 import (
-	"crypto/tls"
 	"fmt"
 	"io"
 	"math/rand"
@@ -11,28 +10,27 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/go-kit/log"
 	"github.com/xmidt-org/codex-db/cassandra"
+	"github.com/xmidt-org/webpa-common/v2/xmetrics" // nolint: staticcheck
 
 	"github.com/goph/emperror"
 	"github.com/prometheus/common/route"
 	"github.com/xmidt-org/bascule/acquire"
 	"github.com/xmidt-org/heimdall/shuffle"
-	"github.com/xmidt-org/webpa-common/concurrent"
-	"github.com/xmidt-org/webpa-common/logging"
-	"github.com/xmidt-org/webpa-common/server"
+	"github.com/xmidt-org/webpa-common/v2/concurrent" // nolint: staticcheck
+	"github.com/xmidt-org/webpa-common/v2/logging"    // nolint: staticcheck
+	"github.com/xmidt-org/webpa-common/v2/server"     // nolint: staticcheck
 
 	"os"
 	"time"
 
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
-
-	_ "net/http/pprof"
 )
 
 const (
-	applicationName, apiBase = "heimdall", "/api/v1"
-	DEFAULT_KEY_ID           = "current"
+	applicationName = "heimdall"
 )
 
 var (
@@ -79,84 +77,20 @@ type SenderConfig struct {
 
 func start(arguments []string) int {
 	start := time.Now()
-
-	var (
-		f, v                                = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
-		logger, metricsRegistry, codex, err = server.Initialize(applicationName, arguments, f, v, cassandra.Metrics, Metrics, shuffle.Metrics)
-	)
-
-	printVer := f.BoolP("version", "v", false, "displays the version number")
-	if versionParseErr := f.Parse(arguments); versionParseErr != nil {
-		fmt.Fprintf(os.Stderr, "Failed to parse arguments: %s\n", versionParseErr.Error())
-		return 1
+	codex, dbConn, confidence, config, metricsRegistry, logger, s := setup(arguments)
+	if s != nil {
+		return *s
 	}
 
-	if *printVer {
-		printVersionInfo(os.Stdout)
-		return 0
-	}
-
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Unable to initialize viper: %s\n", err.Error())
-		return 1
-	}
-
-	logging.Info(logger).Log(logging.MessageKey(), "Successfully loaded config file", "configurationFile", v.ConfigFileUsed())
-
-	config := new(StatusConfig)
-	v.Unmarshal(config)
-	validate(config)
-
-	dbConn, err := cassandra.CreateDbConnection(config.Db, metricsRegistry, nil)
-	if err != nil {
-		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to initialize database connection",
-			logging.ErrorKey(), err.Error())
-		fmt.Fprintf(os.Stderr, "Database Initialize Failed: %#v\n", err)
-		return 2
-	}
 	stopConfidence := make(chan struct{}, 1)
 	stopPopulate := make(chan struct{}, 1)
 	populateWG := sync.WaitGroup{}
 
-	tr := &http.Transport{
-		TLSClientConfig:       &tls.Config{InsecureSkipVerify: true},
-		ResponseHeaderTimeout: config.Sender.ResponseHeaderTimeout,
-		IdleConnTimeout:       config.Sender.IdleConnTimeout,
-	}
-
-	codexAuth, err := acquire.NewRemoteBearerTokenAcquirer(config.CodexSAT)
-	if err != nil {
-		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to setup codex Remote Bearer Token Acquirer",
-			logging.ErrorKey(), err.Error())
-		fmt.Fprintf(os.Stderr, "codex Remote Bearer Token Acquirer Initialize Failed: %#v\n", err)
-		return 2
-	}
-
-	xmidtAuth, err := acquire.NewRemoteBearerTokenAcquirer(config.XmidtSAT)
-	if err != nil {
-		logging.Error(logger, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to setup xmidt Remote Bearer Token Acquirer",
-			logging.ErrorKey(), err.Error())
-		fmt.Fprintf(os.Stderr, "xmdit Remote Bearer Token Acquirer Initialize Failed: %#v\n", err)
-		return 2
-	}
-
-	confidence := Confidence{
-		codexAddress: config.CodexAddress,
-		codexAuth:    codexAuth,
-		xmidtAddress: config.XmidtAddress,
-		xmidtAuth:    xmidtAuth,
-		logger:       logger,
-		measures:     NewMeasures(metricsRegistry),
-		client: (&http.Client{
-			Transport: tr,
-			Timeout:   config.Sender.ClientTimeout,
-		}).Do,
-	}
 	confidence.wg.Add(1)
 	populateWG.Add(1)
 	shuffler := shuffle.NewStreamShuffler(config.MaxPoolSize, metricsRegistry)
 
-	go populate(dbConn, config.Window, config.WindowLimit, shuffler, stopPopulate, populateWG, confidence.measures)
+	go populate(dbConn, config.Window, config.WindowLimit, shuffler, stopPopulate, &populateWG, confidence.measures)
 
 	interval := config.Tick / time.Duration(config.Rate)
 
@@ -176,9 +110,7 @@ func start(arguments []string) int {
 	for exit := false; !exit; {
 		select {
 		case s := <-signals:
-			if s != os.Kill && s != os.Interrupt {
-				logging.Info(logger).Log(logging.MessageKey(), "ignoring signal", "signal", s)
-			} else {
+			if s == os.Kill || s == os.Interrupt {
 				logging.Error(logger).Log(logging.MessageKey(), "exiting due to signal", "signal", s)
 				exit = true
 			}
@@ -201,6 +133,7 @@ func start(arguments []string) int {
 
 	return 0
 }
+
 func validate(config *StatusConfig) {
 	// fix interval
 	if config.Tick <= 0 {
@@ -219,6 +152,90 @@ func validate(config *StatusConfig) {
 	}
 }
 
+func setupConfidence(c *StatusConfig, mr xmetrics.Registry, l log.Logger) (*Confidence, error) {
+	tr := &http.Transport{
+		ResponseHeaderTimeout: c.Sender.ResponseHeaderTimeout,
+		IdleConnTimeout:       c.Sender.IdleConnTimeout,
+	}
+
+	codexAuth, err := acquire.NewRemoteBearerTokenAcquirer(c.CodexSAT)
+	if err != nil {
+		logging.Error(l, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to setup codex Remote Bearer Token Acquirer",
+			logging.ErrorKey(), err.Error())
+		fmt.Fprintf(os.Stderr, "codex Remote Bearer Token Acquirer Initialize Failed: %#v\n", err)
+		return nil, err
+	}
+
+	xmidtAuth, err := acquire.NewRemoteBearerTokenAcquirer(c.XmidtSAT)
+	if err != nil {
+		logging.Error(l, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to setup xmidt Remote Bearer Token Acquirer",
+			logging.ErrorKey(), err.Error())
+		return nil, err
+	}
+
+	return &Confidence{
+		codexAddress: c.CodexAddress,
+		codexAuth:    codexAuth,
+		xmidtAddress: c.XmidtAddress,
+		xmidtAuth:    xmidtAuth,
+		logger:       l,
+		measures:     NewMeasures(mr),
+		client: (&http.Client{
+			Transport: tr,
+			Timeout:   c.Sender.ClientTimeout,
+		}).Do,
+	}, nil
+}
+
+func setup(arguments []string) (*server.WebPA, *cassandra.Connection, *Confidence, *StatusConfig, xmetrics.Registry, log.Logger, *int) {
+	var (
+		s                 *int
+		f, v              = pflag.NewFlagSet(applicationName, pflag.ContinueOnError), viper.New()
+		l, mr, codex, err = server.Initialize(applicationName, arguments, f, v, cassandra.Metrics, Metrics, shuffle.Metrics)
+	)
+	printVer := f.BoolP("version", "v", false, "displays the version number")
+	if err := f.Parse(arguments); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to parse arguments: %s\n", err.Error())
+		*s = 1
+		return nil, nil, nil, nil, nil, nil, s
+	}
+
+	if *printVer {
+		printVersionInfo(os.Stdout)
+		*s = 0
+		return nil, nil, nil, nil, nil, nil, s
+	}
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Unable to initialize viper: %s\n", err.Error())
+		*s = 1
+		return nil, nil, nil, nil, nil, nil, s
+	}
+
+	logging.Info(l).Log(logging.MessageKey(), "Successfully loaded config file", "configurationFile", v.ConfigFileUsed())
+
+	c := new(StatusConfig)
+	v.Unmarshal(c)
+	validate(c)
+
+	dbConn, err := cassandra.CreateDbConnection(c.Db, mr, nil)
+	if err != nil {
+		logging.Error(l, emperror.Context(err)...).Log(logging.MessageKey(), "Failed to initialize database connection",
+			logging.ErrorKey(), err.Error())
+		fmt.Fprintf(os.Stderr, "Database Initialize Failed: %#v\n", err)
+		*s = 2
+		return nil, nil, nil, nil, nil, nil, s
+	}
+
+	confidence, err := setupConfidence(c, mr, l)
+	if err != nil {
+		*s = 2
+		return nil, nil, nil, nil, nil, nil, s
+	}
+
+	return codex, dbConn, confidence, c, mr, l, s
+}
+
 func printVersionInfo(writer io.Writer) {
 	fmt.Fprintf(writer, "%s:\n", applicationName)
 	fmt.Fprintf(writer, "  version: \t%s\n", Version)
@@ -232,7 +249,7 @@ func main() {
 	os.Exit(start(os.Args))
 }
 
-func populate(conn deviceGetter, window time.Duration, windowLimit int, shuffler shuffle.Interface, stop chan struct{}, wg sync.WaitGroup, measures *Measures) {
+func populate(conn deviceGetter, window time.Duration, windowLimit int, shuffler shuffle.Interface, stop chan struct{}, wg *sync.WaitGroup, measures *Measures) {
 	// start worker pool
 	jobs := make(chan string, windowLimit)
 	for i := 0; i < windowLimit; i++ {
@@ -250,8 +267,8 @@ func populate(conn deviceGetter, window time.Duration, windowLimit int, shuffler
 			beginTime := time.Now().Add(-window).UnixNano()
 			endTime := time.Now().UnixNano()
 
-			windowLower := beginTime + rand.Int63n(endTime-beginTime)
-			windowHigher := beginTime + rand.Int63n(endTime-beginTime)
+			windowLower := beginTime + rand.Int63n(endTime-beginTime)  // nolint: gosec
+			windowHigher := beginTime + rand.Int63n(endTime-beginTime) // nolint: gosec
 			if windowLower > windowHigher {
 				temp := windowHigher
 				windowHigher = windowLower

@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/go-kit/kit/log"
-	"github.com/xmidt-org/webpa-common/logging"
-	"github.com/xmidt-org/webpa-common/xhttp"
+	"github.com/go-kit/log"
+	"github.com/xmidt-org/webpa-common/v2/logging" // nolint:staticcheck
+	"github.com/xmidt-org/webpa-common/v2/xhttp"   // nolint: staticcheck
 
 	"github.com/xmidt-org/bascule/acquire"
 )
@@ -21,16 +21,6 @@ type Status struct {
 	Since             time.Time `json:"since"`
 	Now               time.Time `json:"now"`
 	LastOfflineReason string    `json:"last_offline_reason"`
-}
-type Event []struct {
-	MsgType         int               `json:"msg_type"`
-	Source          string            `json:"source"`
-	Dest            string            `json:"dest"`
-	TransactionUUID string            `json:"transaction_uuid"`
-	ContentType     string            `json:"content_type"`
-	Metadata        map[string]string `json:"metadata"`
-	Payload         string            `json:"payload"`
-	BirthDate       int               `json:"birth_date"`
 }
 
 type Confidence struct {
@@ -169,18 +159,20 @@ func (confidence *Confidence) doRequest(request *http.Request) (int, []byte, err
 		ShouldRetry:       func(error) bool { return true },
 		ShouldRetryStatus: func(code int) bool { return false },
 	}
-	response, err := xhttp.RetryTransactor(retryOptions, confidence.client)(request)
-	defer response.Body.Close()
+	res, err := xhttp.RetryTransactor(retryOptions, confidence.client)(request) // nolint: bodyclose
+
 	if err != nil {
 		logging.Error(confidence.logger).Log(logging.ErrorKey(), err, logging.MessageKey(), "RetryTransactor failed")
 		return 0, []byte{}, err
 	}
 
-	data, err := ioutil.ReadAll(response.Body)
+	defer res.Body.Close()
+
+	data, err := ioutil.ReadAll(res.Body)
 	if err != nil {
 		logging.Error(confidence.logger).Log(logging.ErrorKey(), err, logging.MessageKey(), "failed to read body")
 		return 0, []byte{}, err
 	}
 
-	return response.StatusCode, data, nil
+	return res.StatusCode, data, nil
 }
