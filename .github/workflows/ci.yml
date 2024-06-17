@@ -13,13 +13,21 @@ on:
       - MAINTAINERS.md
       - LICENSE
       - NOTICE
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
   pull_request:
   workflow_dispatch:
 
 jobs:
   ci:
-    uses: xmidt-org/.github/.github/workflows/go-ci.yml@go-ci-v1
+    uses: xmidt-org/shared-go/.github/workflows/ci.yml@a90d2f0138b1c7683b4209c5c41622deb68ae5b7 # v4.4.2
     with:
-      license-skip: true
-      docker-skip: true
+      copyright-skip:        true
+      license-skip:          true
+      lint-skip:             true
+      style-skip:            true
+      release-type:          program
+      release-arch-arm64:    false
+      release-docker:        false
+      yaml-lint-skip: false
     secrets: inherit
